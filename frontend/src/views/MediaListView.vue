@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import { api } from '@/api/client'
 import type { MediaType } from '@/api/types'
 import { usePagedList } from '@/composables/usePagedList'
 import { MEDIA_TYPE_LABEL, toOptions } from '@/utils/display'
+
+const route = useRoute()
+const router = useRouter()
 
 const keyword = ref('')
 const mediaType = ref<MediaType | null>(null)
@@ -27,15 +31,89 @@ const { items, total, page, size, loading, error, refresh, goto, reload } = useP
 
 const typeOptions = toOptions(MEDIA_TYPE_LABEL)
 
-// 关键词做防抖，其余筛选项是离散选择，改动即刻生效
-let timer: ReturnType<typeof setTimeout> | undefined
-watch(keyword, () => {
-  clearTimeout(timer)
-  timer = setTimeout(reload, 300)
-})
-watch([mediaType, year, validOnly], reload)
+// --- 筛选条件与地址栏同步 ---------------------------------------------------
+// 不同步的话：点进详情再返回，筛选和页码全丢；搜索结果也没法发给别人。
 
-onMounted(refresh)
+/** 正在把地址栏的值灌进 ref，此时不要反向再写一次地址栏。 */
+let applyingFromUrl = false
+
+function readFromUrl() {
+  applyingFromUrl = true
+  const q = route.query
+  keyword.value = typeof q.q === 'string' ? q.q : ''
+  mediaType.value = typeof q.type === 'string' ? (q.type as MediaType) : null
+  year.value = q.year ? Number(q.year) || null : null
+  validOnly.value = q.valid === '1'
+  page.value = Number(q.page) > 0 ? Number(q.page) : 1
+  // 等这一轮的 watch 都跑完再解除，否则灌值本身会触发回写
+  void nextTick(() => {
+    applyingFromUrl = false
+  })
+}
+
+/** 当前筛选状态对应的 query。写地址栏和判断「这次变化是不是我们自己写的」都用它。 */
+function buildQuery(): Record<string, string> {
+  const q: Record<string, string> = {}
+  if (keyword.value.trim()) q.q = keyword.value.trim()
+  if (mediaType.value) q.type = mediaType.value
+  if (year.value) q.year = String(year.value)
+  if (validOnly.value) q.valid = '1'
+  if (page.value > 1) q.page = String(page.value)
+  return q
+}
+
+function serialize(q: Record<string, unknown>): string {
+  return Object.keys(q)
+    .filter((k) => q[k] !== undefined && q[k] !== null && q[k] !== '')
+    .sort()
+    .map((k) => `${k}=${String(q[k])}`)
+    .join('&')
+}
+
+function writeToUrl() {
+  // replace 而不是 push：每敲一个字都塞一条历史记录的话，返回键就没法用了
+  void router.replace({ query: buildQuery() })
+}
+
+let timer: ReturnType<typeof setTimeout> | undefined
+
+/** 改了筛选条件：回到第一页，写地址栏，重新取数。 */
+function applyFilters(delay: number) {
+  if (applyingFromUrl) return
+  clearTimeout(timer)
+  timer = setTimeout(() => {
+    page.value = 1
+    writeToUrl()
+    reload()
+  }, delay)
+}
+
+// 输入框按键触发，要防抖；下拉与勾选是离散动作，立即生效
+watch([keyword, year], () => applyFilters(300))
+watch([mediaType, validOnly], () => applyFilters(0))
+
+function changePage(next: number) {
+  goto(next)
+  writeToUrl()
+}
+
+// 浏览器前进/后退会改 query 但不重建组件，要据此回灌并重新取数。
+// 但 writeToUrl 自己也会触发这个 watch —— 只靠标志位很难覆盖异步的 replace，
+// 干脆比较地址栏与当前状态：一致就说明这次变化是我们写的，已经取过数了。
+watch(
+  () => route.query,
+  () => {
+    if (applyingFromUrl) return
+    if (serialize(route.query as Record<string, unknown>) === serialize(buildQuery())) return
+    readFromUrl()
+    void refresh()
+  },
+)
+
+onMounted(() => {
+  readFromUrl()
+  void refresh()
+})
 </script>
 
 <template>
@@ -112,7 +190,7 @@ onMounted(refresh)
       :page="page"
       :page-size="size"
       :item-count="total"
-      @update:page="goto"
+      @update:page="changePage"
     />
   </div>
 </template>

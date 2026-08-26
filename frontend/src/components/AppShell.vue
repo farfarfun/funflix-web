@@ -28,15 +28,18 @@ function link(name: string, label: string) {
   return () => h(RouterLink, { to: { name } }, { default: () => label })
 }
 
+// 网盘资源放在「运维」而不是「发现」：它是按链接维度的全量清单，
+// 后端要求管理密钥才能读，用途是排查「某个网盘是不是大面积失效了」，
+// 而不是给使用者浏览内容 —— 那条路径是作品检索。
 const menuOptions: MenuOption[] = [
   { type: 'group', label: '发现', key: 'g-discover', children: [
     { label: link('media', '作品检索'), key: 'media' },
-    { label: link('resources', '网盘资源'), key: 'resources' },
   ]},
   { type: 'group', label: '运维', key: 'g-ops', children: [
     { label: link('dashboard', '流水线大盘'), key: 'dashboard' },
     { label: link('sources', '采集源'), key: 'sources' },
     { label: link('raw', '原始文本'), key: 'raw' },
+    { label: link('resources', '网盘资源'), key: 'resources' },
   ]},
 ]
 
