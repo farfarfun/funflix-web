@@ -1,0 +1,24 @@
+# 前端构建产物：由 pnpm build 生成，不入库
+/src/funflix_web/static/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+.vite/
+*.tsbuildinfo
+
+# 本地配置与数据
+.env
+*.db
+*.db-shm
+*.db-wal
+logs/
