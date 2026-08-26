@@ -16,7 +16,7 @@ readonly ROOT SERVICE_DIR RELEASE_SCRIPT DEV_SCRIPT
 # 服务级动作需要 service；仓库级动作不需要
 readonly -a SERVICE_ACTIONS=(start stop restart run status)
 readonly -a RELEASE_ACTIONS=(publish install)
-readonly -a DEV_ACTIONS=(bootstrap build test lint clean)
+readonly -a DEV_ACTIONS=(bootstrap build migrate test lint clean)
 readonly -a SERVICES=(web worker)
 
 # 刻意不提供 all：目前没有必须批量操作的场景，而一个语义含糊的 all
@@ -29,6 +29,7 @@ funflix-web 统一入口。
 开发：
   scripts/setup.sh bootstrap            装 Python 与前端依赖
   scripts/setup.sh build                构建前端到 src/funflix_web/static
+  scripts/setup.sh migrate [dev|prod]   建库 / 执行数据库迁移
   scripts/setup.sh test                 跑测试
   scripts/setup.sh lint                 ruff + vue-tsc + shell 语法
   scripts/setup.sh clean                清掉构建产物与 .run/

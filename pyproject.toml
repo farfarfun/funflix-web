@@ -14,8 +14,9 @@ classifiers = [
     "Framework :: FastAPI",
 ]
 dependencies = [
-    # 0.1.4 起才有 media / resources / stats 查询接口，低于它前端没有数据可展示
-    "funflix>=0.1.4",
+    # 0.1.4 起才有 media / resources / stats 查询接口，低于它前端没有数据可展示；
+    # 0.1.6 起 alembic 迁移随包发布，建库不再需要 funflix 的源码检出
+    "funflix>=0.1.6",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "typer>=0.12",

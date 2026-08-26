@@ -89,11 +89,36 @@ do_clean() {
   rm -rf "${STATIC_DIR}" "${ROOT}/.run"
 }
 
+# --- migrate ----------------------------------------------------------------
+
+# funflix 0.1.6 起把 migrations 与 alembic.ini 打进了包，所以建库可以直接用
+# 装好的 funflix，不再需要它的源码检出。dev 用开发环境，prod 用装了正式包的
+# 那个环境 —— 两边的库地址与包版本都可能不同，不能混着来。
+do_migrate() {
+  local env="${1:-dev}" bin
+  case "${env}" in
+  dev) bin="${VENV}/bin/funflix" ;;
+  prod) bin="${ROOT}/.run/prod-venv/bin/funflix" ;;
+  *) die "未知环境：${env}（只接受 dev 或 prod）" ;;
+  esac
+
+  [[ -x "${bin}" ]] || die "找不到 ${bin}，先执行 scripts/setup.sh $([[ ${env} == prod ]] && echo install || echo bootstrap)"
+
+  info "对 ${env} 环境执行数据库迁移"
+  "${bin}" db upgrade
+}
+
 main() {
   local action="${1:-}"
-  (($# == 1)) || die "${action:-<空>} 不接受额外参数"
   case "${action}" in
-  bootstrap | build | test | lint | clean) "do_${action}" ;;
+  migrate)
+    (($# <= 2)) || die "migrate 最多接受一个环境参数"
+    do_migrate "${2:-dev}"
+    ;;
+  bootstrap | build | test | lint | clean)
+    (($# == 1)) || die "${action} 不接受额外参数"
+    "do_${action}"
+    ;;
   *) die "未知动作：${action:-<空>}" ;;
   esac
 }

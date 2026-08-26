@@ -31,23 +31,19 @@
 
 ## 快速开始
 
-本仓库**不依赖 funflix 的源码检出**，funflix 按版本号从 PyPI 安装（见
-`pyproject.toml` 的 `funflix>=0.1.4`，低于这个版本没有查询接口）。
+本仓库**完全不依赖 funflix 的源码检出**，funflix 按版本号从 PyPI 安装（见
+`pyproject.toml` 的 `funflix>=0.1.6`：0.1.4 起才有查询接口，0.1.6 起迁移随包发布）。
 
 ```bash
 scripts/setup.sh bootstrap        # 装 Python 与前端依赖
+scripts/setup.sh migrate          # 建库
 scripts/setup.sh build            # 构建前端
 scripts/setup.sh start web dev    # → http://127.0.0.1:8810/web
 ```
 
-没构建前端也能起：后端接口照常可用，`/web` 会返回构建提示而不是一个没头没脑的 404。
+以上四步在一个只有本仓库、附近没有任何 funflix 源码的目录里验证过。
 
-> **建库目前还需要 funflix 的源码仓库。** funflix 的 wheel 里不含 `migrations/`
-> 与 `alembic.ini`（打包只收了 `src/funflix`），且 `funflix db upgrade` 用的是
-> 相对路径 `Config("alembic.ini")`，在包安装场景下会报
-> `No 'script_location' key found in configuration`。在上游把迁移一并打进包之前，
-> 初始化数据库仍需在 funflix 仓库里执行 `alembic upgrade head`。
-> 这是唯一还没解开的耦合，且只影响初始化，日常运行不需要 funflix 源码。
+没构建前端也能起：后端接口照常可用，`/web` 会返回构建提示而不是一个没头没脑的 404。
 
 ## 统一入口
 
@@ -58,6 +54,7 @@ scripts/setup.sh start web dev    # → http://127.0.0.1:8810/web
 # 开发
 scripts/setup.sh bootstrap                # 装依赖
 scripts/setup.sh build                    # 构建前端到 src/funflix_web/static
+scripts/setup.sh migrate [dev|prod]       # 建库 / 执行数据库迁移
 scripts/setup.sh test                     # 跑测试
 scripts/setup.sh lint                     # ruff + vue-tsc + shell 语法
 scripts/setup.sh clean                    # 清掉构建产物与 .run/
