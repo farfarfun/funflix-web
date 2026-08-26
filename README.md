@@ -67,7 +67,7 @@ scripts/setup.sh <start|stop|restart|run> <web|worker> <dev|prod>
 scripts/setup.sh status [web|worker]      # 不交互，一次报全部环境
 
 # 发布
-scripts/setup.sh publish                  # 构建前端 + nltbuild 发布正式包
+scripts/setup.sh publish                  # 构建前端 + funbuild 发布正式包
 scripts/setup.sh install [版本号]          # 按精确版本装到 .run/prod-venv
 ```
 
@@ -107,7 +107,7 @@ cd frontend && pnpm dev           # 终端 B：5173，/api 代理到 8810
 `start prod` 找不到 `.run/prod-venv` 里的正式包时直接失败，不会回落到源码。
 
 ```bash
-scripts/setup.sh publish            # 构建前端 → nltbuild 打包上传
+scripts/setup.sh publish            # 构建前端 → funbuild 打包上传
 scripts/setup.sh install 0.1.1      # 建干净 venv，精确版本装回来并校验
 scripts/setup.sh start web prod
 scripts/setup.sh start worker prod
@@ -124,7 +124,7 @@ scripts/setup.sh start worker prod
 > 注意：`funflix` 的 PyPI 版本必须先带上查询接口（M6），`funflix-web` 的正式包才能真正跑起来。
 > 顺序是先发 funflix，再发 funflix-web。
 
-`nltbuild build` 在构建后会把打出来的 wheel 装进当前环境做校验，这会顶掉开发用的可编辑安装 ——
+`funbuild build` 在构建后会把打出来的 wheel 装进当前环境做校验，这会顶掉开发用的可编辑安装 ——
 之后改 `src/` 下的代码不再生效，服务照常起、跑的却是发布那一刻的快照，且没有任何提示。
 `publish` 结束时会自动把可编辑安装装回去。
 
