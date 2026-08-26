@@ -75,3 +75,36 @@ class TestSPAServing:
     async def test_existing_non_asset_file_is_served(self, client) -> None:
         resp = await client.get("/web/favicon.ico")
         assert resp.status_code == 200
+
+
+@pytest.mark.asyncio
+class TestCacheHeaders:
+    """带 hash 的资源可以永久缓存，index.html 绝不能。"""
+
+    async def test_hashed_asset_is_immutable(self, client) -> None:
+        resp = await client.get("/web/assets/index-abc123.js")
+        cache = resp.headers["cache-control"]
+        assert "immutable" in cache
+        assert "max-age=31536000" in cache
+
+    async def test_index_is_revalidated(self, client) -> None:
+        """index.html 是唯一记录「该加载哪些 hash 资源」的地方。
+        一旦被缓存住，重新部署后用户永远拿不到新版本。"""
+        assert (await client.get("/web/")).headers["cache-control"] == "no-cache"
+
+    async def test_spa_fallback_is_revalidated(self, client) -> None:
+        """深链回退返回的其实就是 index.html，缓存策略必须一致。"""
+        assert (await client.get("/web/media/12")).headers["cache-control"] == "no-cache"
+
+    async def test_non_hashed_file_is_revalidated(self, client) -> None:
+        """favicon 这类没有 hash 的文件改名不会变，不能按 immutable 处理。"""
+        assert (await client.get("/web/favicon.ico")).headers["cache-control"] == "no-cache"
+
+    async def test_revalidation_keeps_cache_directive(self, client) -> None:
+        """304 也要带上 Cache-Control，否则重新校验成功后浏览器会丢掉原指令。"""
+        first = await client.get("/web/assets/index-abc123.js")
+        resp = await client.get(
+            "/web/assets/index-abc123.js", headers={"if-none-match": first.headers["etag"]}
+        )
+        assert resp.status_code == 304
+        assert "immutable" in resp.headers["cache-control"]

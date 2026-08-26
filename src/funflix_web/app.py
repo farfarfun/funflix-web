@@ -15,6 +15,7 @@ from __future__ import annotations
 import logging
 
 from fastapi import FastAPI
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from funflix.api.app import create_app as create_backend_app
 
@@ -23,6 +24,9 @@ from funflix_web.spa import BUILD_HINT, STATIC_DIR, SPAStaticFiles, frontend_rea
 logger = logging.getLogger(__name__)
 
 WEB_PREFIX = "/web"
+
+#: 小于这个大小就不压缩 —— 压缩头本身有开销，小响应压完可能反而更大。
+_GZIP_MIN_SIZE = 1024
 
 
 def _mount_frontend(app: FastAPI) -> None:
@@ -47,6 +51,10 @@ def create_app() -> FastAPI:
     app = create_backend_app()
     app.title = "funflix-web"
     app.description = "funflix 的 Web 界面：/api 为后端接口，/web 为前端界面"
+
+    # 前端主包未压缩有 240KB，压完约 68KB。静态资源与接口响应都会走到这里 ——
+    # 没有前置的 nginx 时，这是唯一的压缩点。
+    app.add_middleware(GZipMiddleware, minimum_size=_GZIP_MIN_SIZE)
 
     @app.get("/", include_in_schema=False)
     async def _root() -> RedirectResponse:
