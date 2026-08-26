@@ -38,7 +38,7 @@ funflix-web 统一入口。
   scripts/setup.sh status [web|worker]
 
 发布：
-  scripts/setup.sh publish              构建前端 + nltbuild 发布正式包
+  scripts/setup.sh publish              构建前端 + funbuild 发布正式包
   scripts/setup.sh install [版本号]      按精确版本装到 .run/prod-venv
 
 说明：

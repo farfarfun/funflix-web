@@ -51,14 +51,14 @@ do_publish() {
   local version
   version="$(declared_version "${ROOT}")"
 
-  command -v nltbuild >/dev/null 2>&1 || die "未找到 nltbuild，它是本项目约定的构建发布工具"
+  command -v funbuild >/dev/null 2>&1 || die "未找到 funbuild，它是本项目约定的构建发布工具"
 
   # 前端必须先构建：静态产物被 .gitignore 忽略，不显式产出的话打出来的 wheel
   # 里没有 static/，装完之后 /web 会返回「前端尚未构建」而不是界面。
   build_frontend
 
   info "发布 ${PACKAGE_NAME} ${version}"
-  (cd "${ROOT}" && nltbuild build)
+  (cd "${ROOT}" && funbuild build)
 
   restore_editable_install
 
@@ -71,7 +71,7 @@ do_publish() {
 EOF
 }
 
-# nltbuild 在构建后会把打出来的 wheel 装进当前环境做校验，这会顶掉开发用的
+# funbuild 在构建后会把打出来的 wheel 装进当前环境做校验，这会顶掉开发用的
 # 可编辑安装 —— 之后改 src/ 下的代码不再生效，而且完全没有提示：服务照常起，
 # 跑的却是发布那一刻的快照。这里把它装回去。
 restore_editable_install() {
@@ -86,7 +86,7 @@ restore_editable_install() {
   # 已经指向工作树就不用动
   [[ "${location}" == "${ROOT}/src/funflix_web" ]] && return 0
 
-  info "恢复开发用的可编辑安装（nltbuild 装入的 wheel 覆盖了它）"
+  info "恢复开发用的可编辑安装（funbuild 装入的 wheel 覆盖了它）"
   if command -v uv >/dev/null 2>&1; then
     (cd "${ROOT}" && uv pip install -e ".[dev]" >/dev/null)
   else
