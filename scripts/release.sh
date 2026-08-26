@@ -40,11 +40,9 @@ PY
 
 # --- 前端产物 ---------------------------------------------------------------
 
+# 复用 dev.sh 的构建，不在这里再写一遍 —— 两份构建命令迟早会漂
 build_frontend() {
-  command -v pnpm >/dev/null 2>&1 || die "未找到 pnpm，无法构建前端"
-  info "构建前端"
-  (cd "${FRONTEND_DIR}" && pnpm install --frozen-lockfile && pnpm build)
-  [[ -f "${STATIC_DIR}/index.html" ]] || die "前端构建结束但没有产出 ${STATIC_DIR}/index.html"
+  bash "${SCRIPT_DIR}/dev.sh" build
 }
 
 # --- publish ----------------------------------------------------------------
@@ -170,11 +168,15 @@ index = location / "static" / "index.html"
 if not index.is_file():
     failures.append(f"安装包内缺少前端产物：{index}")
 
-# funflix 也必须来自仓库，且带 M6 查询接口
+# funflix 也必须来自这个生产环境，且带查询接口。
+# 判断依据是「和 funflix_web 装在同一个 site-packages 下」而不是「不在某个
+# 兄弟目录里」—— 后者假设了仓库的摆放位置，换台机器就不成立。
 import funflix
 fl = pathlib.Path(funflix.__file__).resolve().parent
-if root.parent in fl.parents and "site-packages" not in str(fl):
-    failures.append(f"funflix 来自本地检出：{fl}")
+if fl.parent != location.parent:
+    failures.append(f"funflix 不在生产环境里：{fl}")
+if fl == root or root in fl.parents:
+    failures.append(f"funflix 来自源码检出：{fl}")
 try:
     __import__("funflix.services.stats")
 except ImportError:

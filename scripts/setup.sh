@@ -10,11 +10,13 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SERVICE_DIR="${ROOT}/scripts/services"
 RELEASE_SCRIPT="${ROOT}/scripts/release.sh"
-readonly ROOT SERVICE_DIR RELEASE_SCRIPT
+DEV_SCRIPT="${ROOT}/scripts/dev.sh"
+readonly ROOT SERVICE_DIR RELEASE_SCRIPT DEV_SCRIPT
 
-# 服务级动作需要 service；包级动作不需要
+# 服务级动作需要 service；仓库级动作不需要
 readonly -a SERVICE_ACTIONS=(start stop restart run status)
-readonly -a PACKAGE_ACTIONS=(publish install)
+readonly -a RELEASE_ACTIONS=(publish install)
+readonly -a DEV_ACTIONS=(bootstrap build test lint clean)
 readonly -a SERVICES=(web worker)
 
 # 刻意不提供 all：目前没有必须批量操作的场景，而一个语义含糊的 all
@@ -22,20 +24,28 @@ readonly -a SERVICES=(web worker)
 
 usage() {
   cat >&2 <<'EOF'
-用法：
+funflix-web 统一入口。
+
+开发：
+  scripts/setup.sh bootstrap            装 Python 与前端依赖
+  scripts/setup.sh build                构建前端到 src/funflix_web/static
+  scripts/setup.sh test                 跑测试
+  scripts/setup.sh lint                 ruff + vue-tsc + shell 语法
+  scripts/setup.sh clean                清掉构建产物与 .run/
+
+服务：
   scripts/setup.sh <start|stop|restart|run> <web|worker> <dev|prod>
   scripts/setup.sh status [web|worker]
-  scripts/setup.sh publish
-  scripts/setup.sh install [版本号]
+
+发布：
+  scripts/setup.sh publish              构建前端 + nltbuild 发布正式包
+  scripts/setup.sh install [版本号]      按精确版本装到 .run/prod-venv
 
 说明：
   start    后台启动，PID 与日志写在 .run/
   run      前台运行，Ctrl-C 直接停止；web 的 run dev 带热重载
   status   不交互，一次报告全部环境
-  publish  构建前端 + nltbuild 发布正式包
-  install  从仓库按精确版本装到 .run/prod-venv，供 prod 使用
-
-  prod 只运行安装好的正式包，缺包时直接失败，不会回落到源码。
+  prod     只运行装好的正式包，缺包时直接失败，不会回落到源码
 EOF
 }
 
@@ -124,12 +134,17 @@ main() {
   }
 
   local action="${1:-}"
-  [[ -n "${action}" ]] || action="$(choose "${SERVICE_ACTIONS[@]}" "${PACKAGE_ACTIONS[@]}")"
+  [[ -n "${action}" ]] ||
+    action="$(choose "${SERVICE_ACTIONS[@]}" "${DEV_ACTIONS[@]}" "${RELEASE_ACTIONS[@]}")"
 
-  # --- 包级动作：不带服务，原样转交 release.sh ---
-  if contains "${action}" "${PACKAGE_ACTIONS[@]}"; then
+  # --- 仓库级动作：不带服务，原样转交对应脚本 ---
+  if contains "${action}" "${RELEASE_ACTIONS[@]}"; then
     shift || true
     exec bash "${RELEASE_SCRIPT}" "${action}" "$@"
+  fi
+  if contains "${action}" "${DEV_ACTIONS[@]}"; then
+    shift || true
+    exec bash "${DEV_SCRIPT}" "${action}" "$@"
   fi
 
   contains "${action}" "${SERVICE_ACTIONS[@]}" || {

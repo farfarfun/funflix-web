@@ -14,7 +14,8 @@ classifiers = [
     "Framework :: FastAPI",
 ]
 dependencies = [
-    "funflix>=0.1.1",
+    # 0.1.4 起才有 media / resources / stats 查询接口，低于它前端没有数据可展示
+    "funflix>=0.1.4",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "typer>=0.12",
@@ -47,9 +48,6 @@ email = "niuliangtao@qq.com"
 [[project.maintainers]]
 name = "farfarfun"
 email = "farfarfun@qq.com"
-[tool.uv.sources]
-funflix = { path = "../funflix", editable = true }
-
 [tool.ruff]
 line-length = 100
 target-version = "py312"

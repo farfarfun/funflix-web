@@ -31,34 +31,48 @@
 
 ## 快速开始
 
+本仓库**不依赖 funflix 的源码检出**，funflix 按版本号从 PyPI 安装（见
+`pyproject.toml` 的 `funflix>=0.1.4`，低于这个版本没有查询接口）。
+
 ```bash
-# 1. 装依赖（后端以可编辑方式装上同级目录的 funflix，前端装 node 依赖）
-make install
-
-# 2. 建库（在 funflix 仓库里执行）
-cd ../funflix && alembic upgrade head && cd -
-
-# 3. 构建前端
-make build
-
-# 4. 起服务
-scripts/setup.sh start web dev
-# → http://127.0.0.1:8810/web
+scripts/setup.sh bootstrap        # 装 Python 与前端依赖
+scripts/setup.sh build            # 构建前端
+scripts/setup.sh start web dev    # → http://127.0.0.1:8810/web
 ```
 
 没构建前端也能起：后端接口照常可用，`/web` 会返回构建提示而不是一个没头没脑的 404。
 
-## 服务与生命周期
+> **建库目前还需要 funflix 的源码仓库。** funflix 的 wheel 里不含 `migrations/`
+> 与 `alembic.ini`（打包只收了 `src/funflix`），且 `funflix db upgrade` 用的是
+> 相对路径 `Config("alembic.ini")`，在包安装场景下会报
+> `No 'script_location' key found in configuration`。在上游把迁移一并打进包之前，
+> 初始化数据库仍需在 funflix 仓库里执行 `alembic upgrade head`。
+> 这是唯一还没解开的耦合，且只影响初始化，日常运行不需要 funflix 源码。
 
-生命周期的唯一入口是 `scripts/setup.sh`，按 `动作 → 服务 → 环境` 解析。
+## 统一入口
+
+对外只有 `scripts/setup.sh` 一个入口，服务级动作按 `动作 → 服务 → 环境` 解析。
 参数给全就直接执行，缺哪个才问哪个。
 
 ```bash
+# 开发
+scripts/setup.sh bootstrap                # 装依赖
+scripts/setup.sh build                    # 构建前端到 src/funflix_web/static
+scripts/setup.sh test                     # 跑测试
+scripts/setup.sh lint                     # ruff + vue-tsc + shell 语法
+scripts/setup.sh clean                    # 清掉构建产物与 .run/
+
+# 服务
 scripts/setup.sh <start|stop|restart|run> <web|worker> <dev|prod>
 scripts/setup.sh status [web|worker]      # 不交互，一次报全部环境
+
+# 发布
 scripts/setup.sh publish                  # 构建前端 + nltbuild 发布正式包
-scripts/setup.sh install [版本号]          # 从仓库按精确版本装到 .run/prod-venv
+scripts/setup.sh install [版本号]          # 按精确版本装到 .run/prod-venv
 ```
+
+脚本分工：`setup.sh` 只做解析与分发，`dev.sh` 管本地任务，`release.sh` 管发布与安装，
+`services/*.sh` 各自持有端口与启动命令，`lib/service.sh` 放共享的 PID / 锁 / 优雅停止。
 
 两个长期运行的服务：
 
@@ -86,12 +100,6 @@ cd frontend && pnpm dev           # 终端 B：5173，/api 代理到 8810
 
 开发时访问 `http://127.0.0.1:5173`（不是 8810）。`vite.config.ts` 里把 `/api`
 与 `/healthz` 都代理到了 8810，所以不会有跨域问题。
-
-```bash
-make build        # 构建前端到 src/funflix_web/static
-make test         # 两个仓库的测试
-make lint         # ruff + vue-tsc + 所有 shell 脚本语法检查
-```
 
 ## 生产发布
 
