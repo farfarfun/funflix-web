@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+# funflix-web 生命周期统一入口。
+#
+#   scripts/setup.sh <action> [service] [env]
+#
+# 服务级动作按 action -> service -> env 解析；包级动作（publish / install）
+# 不带服务。参数给全就直接执行，只有缺失的部分才会交互补齐。
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SERVICE_DIR="${ROOT}/scripts/services"
+RELEASE_SCRIPT="${ROOT}/scripts/release.sh"
+readonly ROOT SERVICE_DIR RELEASE_SCRIPT
+
+# 服务级动作需要 service；包级动作不需要
+readonly -a SERVICE_ACTIONS=(start stop restart run status)
+readonly -a PACKAGE_ACTIONS=(publish install)
+readonly -a SERVICES=(web worker)
+
+# 刻意不提供 all：目前没有必须批量操作的场景，而一个语义含糊的 all
+# （顺序？失败了继续还是中止？）比没有它更糟。真需要时再显式加。
+
+usage() {
+  cat >&2 <<'EOF'
+用法：
+  scripts/setup.sh <start|stop|restart|run> <web|worker> <dev|prod>
+  scripts/setup.sh status [web|worker]
+  scripts/setup.sh publish
+  scripts/setup.sh install [版本号]
+
+说明：
+  start    后台启动，PID 与日志写在 .run/
+  run      前台运行，Ctrl-C 直接停止；web 的 run dev 带热重载
+  status   不交互，一次报告全部环境
+  publish  构建前端 + nltbuild 发布正式包
+  install  从仓库按精确版本装到 .run/prod-venv，供 prod 使用
+
+  prod 只运行安装好的正式包，缺包时直接失败，不会回落到源码。
+EOF
+}
+
+die() {
+  printf 'error: %s\n' "$*" >&2
+  exit 2
+}
+
+contains() {
+  local needle="$1" item
+  shift
+  for item in "$@"; do
+    [[ "${item}" == "${needle}" ]] && return 0
+  done
+  return 1
+}
+
+needs_env() {
+  case "$1" in
+  start | stop | restart | run) return 0 ;;
+  *) return 1 ;;
+  esac
+}
+
+# 只在参数缺失时才用。gum 不在就报错让用户补全参数 ——
+# 生命周期脚本不该自己去装交互依赖。
+choose() {
+  command -v gum >/dev/null 2>&1 ||
+    die "缺少参数，且未安装 gum；请用完整参数调用，见 scripts/setup.sh --help"
+  gum choose "$@"
+}
+
+service_script_for() {
+  case "$1" in
+  web) printf '%s\n' "${SERVICE_DIR}/web.sh" ;;
+  worker) printf '%s\n' "${SERVICE_DIR}/worker.sh" ;;
+  *) return 1 ;;
+  esac
+}
+
+run_service() {
+  local service="$1" script
+  shift
+  script="$(service_script_for "${service}")" || die "未知服务：${service}"
+  [[ -f "${script}" ]] || die "缺少服务脚本：${script}"
+  bash "${script}" "$@"
+}
+
+# status 不带服务时报告全部服务，且不弹菜单
+status_all() {
+  local service rc=0
+  for service in "${SERVICES[@]}"; do
+    run_service "${service}" status || rc=1
+  done
+  return "${rc}"
+}
+
+main() {
+  case "${1:-}" in
+  -h | --help | help)
+    usage
+    exit 0
+    ;;
+  esac
+
+  (($# <= 3)) || {
+    usage
+    die "参数过多"
+  }
+
+  local action="${1:-}"
+  [[ -n "${action}" ]] || action="$(choose "${SERVICE_ACTIONS[@]}" "${PACKAGE_ACTIONS[@]}")"
+
+  # --- 包级动作：不带服务，原样转交 release.sh ---
+  if contains "${action}" "${PACKAGE_ACTIONS[@]}"; then
+    shift || true
+    exec bash "${RELEASE_SCRIPT}" "${action}" "$@"
+  fi
+
+  contains "${action}" "${SERVICE_ACTIONS[@]}" || {
+    usage
+    die "未知动作：${action}"
+  }
+
+  local service="${2:-}" env="${3:-}"
+
+  # status 是唯一允许省略服务的服务级动作：省略就是「全都报一遍」
+  if [[ "${action}" == "status" ]]; then
+    [[ -z "${env}" ]] || {
+      usage
+      die "status 不接受环境参数"
+    }
+    if [[ -z "${service}" ]]; then
+      status_all
+      return
+    fi
+    contains "${service}" "${SERVICES[@]}" || {
+      usage
+      die "未知服务：${service}"
+    }
+    run_service "${service}" status
+    return
+  fi
+
+  [[ -n "${service}" ]] || service="$(choose "${SERVICES[@]}")"
+  contains "${service}" "${SERVICES[@]}" || {
+    usage
+    die "未知服务：${service}"
+  }
+
+  if needs_env "${action}"; then
+    [[ -n "${env}" ]] || env="$(choose dev prod)"
+    [[ "${env}" == "dev" || "${env}" == "prod" ]] || {
+      usage
+      die "未知环境：${env}"
+    }
+  elif [[ -n "${env}" ]]; then
+    usage
+    die "${action} 不接受环境参数"
+  fi
+
+  run_service "${service}" "${action}" "${env}"
+}
+
+main "$@"

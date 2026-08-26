@@ -1,0 +1,1 @@
+error: 缺少正式包：/home/bingtao/workspace/github/farfarfun/funflix-web/.run/prod-venv/bin/funflix-web 不存在。先执行 scripts/setup.sh install，web prod 不会回落到源码。
