@@ -1,0 +1,73 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "funflix-web"
+version = "0.1.1"
+description = "funflix 的 Web 界面：单进程同时提供后端接口与前端界面"
+readme = "README.md"
+requires-python = ">=3.12"
+keywords = ["media", "netdisk", "fastapi", "vue"]
+classifiers = [
+    "Programming Language :: Python :: 3.12",
+    "Framework :: FastAPI",
+]
+dependencies = [
+    "funflix>=0.1.1",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "typer>=0.12",
+]
+license = "MIT"
+
+[[project.authors]]
+name = "牛哥"
+email = "niuliangtao@qq.com"
+
+[[project.authors]]
+name = "farfarfun"
+email = "farfarfun@qq.com"
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "httpx>=0.27", "ruff>=0.6"]
+
+[project.scripts]
+funflix-web = "funflix_web.cli:app"
+
+[project.urls]
+Organization = "https://github.com/farfarfun"
+Repository = "https://github.com/farfarfun/funflix-web"
+Releases = "https://github.com/farfarfun/funflix-web/releases"
+
+
+[[project.maintainers]]
+name = "牛哥"
+email = "niuliangtao@qq.com"
+
+[[project.maintainers]]
+name = "farfarfun"
+email = "farfarfun@qq.com"
+[tool.uv.sources]
+funflix = { path = "../funflix", editable = true }
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/funflix_web"]
+# 前端构建产物在 .gitignore 里，而 hatchling 默认跟随 VCS 忽略规则，
+# 不显式声明的话打出来的 wheel 里一个静态文件都没有 —— 装完之后
+# /web 会返回「前端尚未构建」，而接口一切正常，很难往打包上想。
+artifacts = ["src/funflix_web/static/**/*"]
+
+[tool.hatch.build.targets.sdist]
+artifacts = ["src/funflix_web/static/**/*"]
