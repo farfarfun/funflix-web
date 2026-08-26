@@ -62,6 +62,8 @@ do_publish() {
   info "发布 ${PACKAGE_NAME} ${version}"
   (cd "${ROOT}" && nltbuild build)
 
+  restore_editable_install
+
   cat <<EOF
 
 已发布 ${PACKAGE_NAME} ${version}。
@@ -69,6 +71,29 @@ do_publish() {
     scripts/setup.sh install ${version}
     scripts/setup.sh start web prod
 EOF
+}
+
+# nltbuild 在构建后会把打出来的 wheel 装进当前环境做校验，这会顶掉开发用的
+# 可编辑安装 —— 之后改 src/ 下的代码不再生效，而且完全没有提示：服务照常起，
+# 跑的却是发布那一刻的快照。这里把它装回去。
+restore_editable_install() {
+  local dev_venv="${ROOT}/.venv"
+  [[ -d "${dev_venv}" ]] || return 0
+
+  local location
+  location="$("${dev_venv}/bin/python" -c \
+    'import funflix_web,pathlib;print(pathlib.Path(funflix_web.__file__).resolve().parent)' \
+    2>/dev/null)" || return 0
+
+  # 已经指向工作树就不用动
+  [[ "${location}" == "${ROOT}/src/funflix_web" ]] && return 0
+
+  info "恢复开发用的可编辑安装（nltbuild 装入的 wheel 覆盖了它）"
+  if command -v uv >/dev/null 2>&1; then
+    (cd "${ROOT}" && uv pip install -e ".[dev]" >/dev/null)
+  else
+    "${dev_venv}/bin/pip" install -q -e "${ROOT}[dev]"
+  fi
 }
 
 # --- install ----------------------------------------------------------------

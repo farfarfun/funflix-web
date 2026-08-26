@@ -76,12 +76,29 @@ service_script_for() {
   esac
 }
 
+resolve_service_script() {
+  local script
+  script="$(service_script_for "$1")" || die "未知服务：$1"
+  [[ -f "${script}" ]] || die "缺少服务脚本：${script}"
+  printf '%s\n' "${script}"
+}
+
+# 普通子进程调用，只用于需要连续跑多个服务的场景（status）
 run_service() {
   local service="$1" script
   shift
-  script="$(service_script_for "${service}")" || die "未知服务：${service}"
-  [[ -f "${script}" ]] || die "缺少服务脚本：${script}"
+  script="$(resolve_service_script "${service}")"
   bash "${script}" "$@"
+}
+
+# 单服务动作一律 exec 过去，不在中间留一层 shell。
+# 留着的话 run 就成了「setup.sh 派生服务」：TERM 打到 setup.sh 上只会
+# 杀掉这层壳，服务被丢成孤儿继续占着端口，而调用方看到的是已经退出。
+exec_service() {
+  local service="$1" script
+  shift
+  script="$(resolve_service_script "${service}")"
+  exec bash "${script}" "$@"
 }
 
 # status 不带服务时报告全部服务，且不弹菜单
@@ -136,8 +153,7 @@ main() {
       usage
       die "未知服务：${service}"
     }
-    run_service "${service}" status
-    return
+    exec_service "${service}" status
   fi
 
   [[ -n "${service}" ]] || service="$(choose "${SERVICES[@]}")"
@@ -157,7 +173,7 @@ main() {
     die "${action} 不接受环境参数"
   fi
 
-  run_service "${service}" "${action}" "${env}"
+  exec_service "${service}" "${action}" "${env}"
 }
 
 main "$@"
