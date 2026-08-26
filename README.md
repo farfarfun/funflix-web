@@ -15,45 +15,73 @@
 
 ## 界面
 
-**发现** —— 面向使用者
+**发现** —— 面向使用者，不需要密钥
 
-- **作品检索**：按剧名搜索（支持别名与简繁），按类型 / 年份筛选，可只看有可用资源的作品
+- **作品检索**：按剧名搜索（支持别名与简繁），按类型 / 年份筛选，可只看有可用资源的作品。
+  筛选条件与页码都同步在地址栏里，刷新、前进后退、把链接发给别人都能还原同一个结果
 - **作品详情**：别名、归一键、全部网盘链接及其画质、大小、校验状态，一键复制链接与提取码
-- **网盘资源**：按网盘、校验状态翻页排查链接
 
-**运维** —— 面向维护者
+**运维** —— 面向维护者，写操作与整表查询需要管理密钥
 
 - **流水线大盘**：采集 → 抽取 → 作品/资源 → 校验各环节的记录数与分布，网盘有效率
 - **采集源**：登记、启停、删除、立即采集一次
 - **原始文本**：按解析状态 / 来源翻页，查看全文与解析错误
+- **网盘资源**：按链接维度的全量清单，用于排查「某个网盘是不是大面积失效了」。
+  它是整个资源库的平铺导出，后端要求管理密钥；使用者浏览内容走「作品检索」
 
 ## 快速开始
 
 ```bash
-# 1. 装后端（会以可编辑方式装上同级目录的 funflix）
-uv venv && uv pip install -e ".[dev]"
+# 1. 装依赖（后端以可编辑方式装上同级目录的 funflix，前端装 node 依赖）
+make install
 
 # 2. 建库（在 funflix 仓库里执行）
 cd ../funflix && alembic upgrade head && cd -
 
 # 3. 构建前端
-cd frontend && pnpm install && pnpm build && cd -
+make build
 
 # 4. 起服务
-funflix-web serve
+scripts/setup.sh start web dev
 # → http://127.0.0.1:8810/web
 ```
 
 没构建前端也能起：后端接口照常可用，`/web` 会返回构建提示而不是一个没头没脑的 404。
+
+## 服务与生命周期
+
+生命周期的唯一入口是 `scripts/setup.sh`，按 `动作 → 服务 → 环境` 解析。
+参数给全就直接执行，缺哪个才问哪个。
+
+```bash
+scripts/setup.sh <start|stop|restart|run> <web|worker> <dev|prod>
+scripts/setup.sh status [web|worker]      # 不交互，一次报全部环境
+scripts/setup.sh publish                  # 构建前端 + nltbuild 发布正式包
+scripts/setup.sh install [版本号]          # 从仓库按精确版本装到 .run/prod-venv
+```
+
+两个长期运行的服务：
+
+| 服务 | 内容 | 端口 |
+| --- | --- | --- |
+| `web` | uvicorn，同时提供 `/api` 与 `/web` | 8810 |
+| `worker` | `funflix worker`，采集 / 解析 / 校验 | 无 |
+
+worker 独立成进程而不是打开 `FUNFLIX_WORKER_ENABLED`，理由在 funflix 的配置注释里：
+进程内 worker 在 uvicorn 多进程部署下每个进程都会起一份，租约虽能防重复处理，
+但会多出几倍空转轮询。
+
+`start` 后台运行，PID、日志、锁都在 `.run/` 下，按「服务.环境」命名；
+`run` 前台运行，Ctrl-C 直接停止。`web` 的 `run dev` 带热重载，`start dev` 不带 ——
+`--reload` 会派生出 reloader 父子进程，后台启动时 PID 文件只认得父进程，停止会不可靠。
 
 ## 开发
 
 前端改动频繁时用 vite 的 HMR，接口交给真实后端：
 
 ```bash
-make dev          # 并行起下面两个
-# funflix-web serve --reload   → 8810，提供 /api
-# cd frontend && pnpm dev      → 5173，/api 代理到 8810
+scripts/setup.sh run web dev      # 终端 A：8810，提供 /api，带热重载
+cd frontend && pnpm dev           # 终端 B：5173，/api 代理到 8810
 ```
 
 开发时访问 `http://127.0.0.1:5173`（不是 8810）。`vite.config.ts` 里把 `/api`
@@ -62,8 +90,35 @@ make dev          # 并行起下面两个
 ```bash
 make build        # 构建前端到 src/funflix_web/static
 make test         # 两个仓库的测试
-make lint         # ruff + vue-tsc
+make lint         # ruff + vue-tsc + 所有 shell 脚本语法检查
 ```
+
+## 生产发布
+
+开发可以直接跑工作树，生产只跑「已发布到仓库、再按精确版本装回来」的正式包 ——
+`start prod` 找不到 `.run/prod-venv` 里的正式包时直接失败，不会回落到源码。
+
+```bash
+scripts/setup.sh publish            # 构建前端 → nltbuild 打包上传
+scripts/setup.sh install 0.1.1      # 建干净 venv，精确版本装回来并校验
+scripts/setup.sh start web prod
+scripts/setup.sh start worker prod
+```
+
+`install` 装完会逐条校验：版本是否精确匹配、代码是否来自 site-packages 而非源码检出、
+有没有可编辑安装残留、**前端产物是否随包装进来**、装回来的 funflix 是否带查询接口，
+最后跑一次冒烟把路由列出来。任何一条不过就直接失败。
+
+前端产物那条尤其重要：`src/funflix_web/static/` 在 `.gitignore` 里，而 hatchling 默认
+跟随 VCS 忽略规则，`pyproject.toml` 里不显式声明 `artifacts` 的话，打出来的 wheel 里
+一个静态文件都没有 —— 接口全正常，只有 `/web` 是空的，很难往打包上想。
+
+> 注意：`funflix` 的 PyPI 版本必须先带上查询接口（M6），`funflix-web` 的正式包才能真正跑起来。
+> 顺序是先发 funflix，再发 funflix-web。
+
+`nltbuild build` 在构建后会把打出来的 wheel 装进当前环境做校验，这会顶掉开发用的可编辑安装 ——
+之后改 `src/` 下的代码不再生效，服务照常起、跑的却是发布那一刻的快照，且没有任何提示。
+`publish` 结束时会自动把可编辑安装装回去。
 
 ## 管理密钥
 
@@ -99,8 +154,11 @@ FUNFLIX_ADMIN_API_KEY=你的密钥 funflix-web serve
 
 ## 技术选型
 
-- **后端**：复用 funflix 的 FastAPI 应用，只加静态托管与 `/` 重定向
+- **后端**：复用 funflix 的 FastAPI 应用，只加静态托管、压缩与 `/` 重定向
 - **前端**：Vue 3 + TypeScript + Vite + Naive UI，组件按需引入（全量引入会多打进 1.2MB）
+- **传输**：开了 gzip，并按文件类型给缓存策略 —— 首屏从 525KB 降到 163KB。
+  `assets/` 下的文件名带内容 hash，给 `immutable` 永久缓存；`index.html` 给 `no-cache`，
+  它是唯一记录「该加载哪些 hash 资源」的地方，缓存住的话重新部署永远不生效
 - **SPA 回退**：`/web/**` 找不到文件时回退 `index.html` 交给前端路由，
   但 `assets/**` 与带扩展名的路径照常 404 —— 否则缺个 JS 会返回 HTML，
   浏览器报的错会跟真实原因（文件不存在）完全对不上
