@@ -16,6 +16,9 @@ node_modules/
 .vite/
 *.tsbuildinfo
 
+# 运行时状态：PID、日志、锁，以及 prod 用的独立虚拟环境
+.run/
+
 # 本地配置与数据
 .env
 *.db
