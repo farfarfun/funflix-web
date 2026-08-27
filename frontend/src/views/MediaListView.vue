@@ -1,11 +1,12 @@
 <script setup lang="ts">
+import { SearchOutline } from '@vicons/ionicons5'
 import { nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { api } from '@/api/client'
 import type { MediaType } from '@/api/types'
 import { usePagedList } from '@/composables/usePagedList'
-import { MEDIA_TYPE_LABEL, toOptions } from '@/utils/display'
+import { MEDIA_TYPE_COLOR, MEDIA_TYPE_LABEL, toOptions } from '@/utils/display'
 
 const route = useRoute()
 const router = useRouter()
@@ -127,7 +128,9 @@ onMounted(() => {
           clearable
           placeholder="搜索剧名，支持别名与简繁"
           style="width: 280px"
-        />
+        >
+          <template #prefix><n-icon :depth="3"><SearchOutline /></n-icon></template>
+        </n-input>
         <n-select
           v-model:value="mediaType"
           :options="typeOptions"
@@ -165,6 +168,7 @@ onMounted(() => {
           size="small"
           hoverable
           class="card"
+          :style="{ borderLeft: `3px solid ${MEDIA_TYPE_COLOR[item.media_type]}` }"
           @click="$router.push({ name: 'media-detail', params: { id: item.id } })"
         >
           <div class="card-title" :title="item.title">{{ item.title }}</div>
@@ -190,6 +194,7 @@ onMounted(() => {
       :page="page"
       :page-size="size"
       :item-count="total"
+      show-quick-jumper
       @update:page="changePage"
     />
   </div>
@@ -215,6 +220,11 @@ onMounted(() => {
 }
 .card {
   cursor: pointer;
+  transition: box-shadow 0.15s var(--ease), transform 0.15s var(--ease);
+}
+.card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
 }
 .card-title {
   font-weight: 600;

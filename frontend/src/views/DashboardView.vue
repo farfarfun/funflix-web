@@ -1,4 +1,10 @@
 <script setup lang="ts">
+import {
+  AlbumsOutline,
+  CloudDownloadOutline,
+  CloudUploadOutline,
+  DocumentTextOutline,
+} from '@vicons/ionicons5'
 import { computed, onMounted, ref } from 'vue'
 
 import { api } from '@/api/client'
@@ -6,9 +12,13 @@ import type { PipelineStats } from '@/api/types'
 import type { BreakdownRow } from '@/components/BreakdownList.vue'
 import BreakdownList from '@/components/BreakdownList.vue'
 import {
+  CHECK_STATUS_COLOR,
   CHECK_STATUS_LABEL,
+  MEDIA_TYPE_COLOR,
   MEDIA_TYPE_LABEL,
+  PARSE_STATUS_COLOR,
   PARSE_STATUS_LABEL,
+  PROVIDER_COLOR,
   PROVIDER_LABEL,
 } from '@/utils/display'
 
@@ -64,7 +74,8 @@ const validRate = computed(() => {
       <template v-if="stats">
         <n-grid :cols="4" :x-gap="12" :y-gap="12" item-responsive responsive="screen">
           <n-gi span="4 s:2 m:1">
-            <n-card size="small">
+            <n-card size="small" class="stat-card">
+              <div class="stat-icon accent-blue"><n-icon size="20"><CloudUploadOutline /></n-icon></div>
               <n-statistic label="采集源" :value="stats.sources_total" />
               <n-text depth="3" class="hint">
                 启用 {{ stats.sources_enabled }}
@@ -75,7 +86,8 @@ const validRate = computed(() => {
             </n-card>
           </n-gi>
           <n-gi span="4 s:2 m:1">
-            <n-card size="small">
+            <n-card size="small" class="stat-card">
+              <div class="stat-icon accent-amber"><n-icon size="20"><DocumentTextOutline /></n-icon></div>
               <n-statistic label="原始文本" :value="stats.raw_total" />
               <n-text depth="3" class="hint">
                 待解析 {{ stats.raw_by_status.pending ?? 0 }}
@@ -83,7 +95,8 @@ const validRate = computed(() => {
             </n-card>
           </n-gi>
           <n-gi span="4 s:2 m:1">
-            <n-card size="small">
+            <n-card size="small" class="stat-card">
+              <div class="stat-icon accent-purple"><n-icon size="20"><AlbumsOutline /></n-icon></div>
               <n-statistic label="作品" :value="stats.media_total" />
               <n-text depth="3" class="hint">
                 关联 {{ stats.media_resource_total }} 条
@@ -91,7 +104,8 @@ const validRate = computed(() => {
             </n-card>
           </n-gi>
           <n-gi span="4 s:2 m:1">
-            <n-card size="small">
+            <n-card size="small" class="stat-card">
+              <div class="stat-icon accent-green"><n-icon size="20"><CloudDownloadOutline /></n-icon></div>
               <n-statistic label="网盘资源" :value="stats.resource_total" />
               <n-text depth="3" class="hint">
                 <template v-if="validRate !== null">有效率 {{ validRate }}%</template>
@@ -107,22 +121,34 @@ const validRate = computed(() => {
         <n-grid :cols="2" :x-gap="12" :y-gap="12" class="mt" item-responsive responsive="screen">
           <n-gi span="2 m:1">
             <n-card size="small" title="原始文本解析状态">
-              <BreakdownList :rows="rows(stats.raw_by_status, PARSE_STATUS_LABEL)" />
+              <BreakdownList
+                :rows="rows(stats.raw_by_status, PARSE_STATUS_LABEL)"
+                :colors="PARSE_STATUS_COLOR"
+              />
             </n-card>
           </n-gi>
           <n-gi span="2 m:1">
             <n-card size="small" title="资源校验状态">
-              <BreakdownList :rows="rows(stats.resource_by_check, CHECK_STATUS_LABEL)" />
+              <BreakdownList
+                :rows="rows(stats.resource_by_check, CHECK_STATUS_LABEL)"
+                :colors="CHECK_STATUS_COLOR"
+              />
             </n-card>
           </n-gi>
           <n-gi span="2 m:1">
             <n-card size="small" title="按网盘分布">
-              <BreakdownList :rows="rows(stats.resource_by_provider, PROVIDER_LABEL)" />
+              <BreakdownList
+                :rows="rows(stats.resource_by_provider, PROVIDER_LABEL)"
+                :colors="PROVIDER_COLOR"
+              />
             </n-card>
           </n-gi>
           <n-gi span="2 m:1">
             <n-card size="small" title="作品类型分布">
-              <BreakdownList :rows="rows(stats.media_by_type, MEDIA_TYPE_LABEL)" />
+              <BreakdownList
+                :rows="rows(stats.media_by_type, MEDIA_TYPE_LABEL)"
+                :colors="MEDIA_TYPE_COLOR"
+              />
             </n-card>
           </n-gi>
           <n-gi span="2 m:1">
@@ -163,5 +189,44 @@ const validRate = computed(() => {
   justify-content: space-between;
   padding: 4px 0;
   font-size: 13px;
+}
+.stat-card {
+  position: relative;
+  transition: box-shadow 0.15s var(--ease), transform 0.15s var(--ease);
+}
+.stat-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.stat-icon {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.accent-blue {
+  color: #2b7fff;
+  background: rgba(43, 127, 255, 0.12);
+}
+.accent-amber {
+  color: #d68f00;
+  background: rgba(214, 143, 0, 0.14);
+}
+.accent-purple {
+  color: #6d5ef8;
+  background: rgba(109, 94, 248, 0.14);
+}
+.accent-green {
+  color: #18a058;
+  background: rgba(24, 160, 88, 0.14);
+}
+.stat-card :deep(.n-statistic-value) {
+  font-size: 26px;
+  font-weight: 700;
 }
 </style>

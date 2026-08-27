@@ -1,20 +1,36 @@
 <script setup lang="ts">
+import { AddOutline, CloudUploadOutline, RefreshOutline } from '@vicons/ionicons5'
 import { useDialog, useMessage } from 'naive-ui'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 
 import { hasAdminKey } from '@/api/auth'
 import { api } from '@/api/client'
-import type { CollectReport, Source } from '@/api/types'
+import type { CollectReport, Source, SourceType } from '@/api/types'
 import { usePagedList } from '@/composables/usePagedList'
-import { formatTime, fromNow, SOURCE_TYPE_LABEL } from '@/utils/display'
+import { formatTime, fromNow, SOURCE_TYPE_LABEL, toOptions } from '@/utils/display'
 
 const message = useMessage()
 const dialog = useDialog()
 
-const { items, total, page, size, loading, error, refresh, goto } = usePagedList(
-  (p, s) => api.listSources({ page: p, size: s }),
+const sourceType = ref<SourceType | null>(null)
+const enabledFilter = ref<'true' | 'false' | null>(null)
+const enabledOptions: { label: string; value: 'true' | 'false' }[] = [
+  { label: '已启用', value: 'true' },
+  { label: '已停用', value: 'false' },
+]
+
+const { items, total, page, size, loading, error, refresh, goto, reload, setSize } = usePagedList(
+  (p, s) =>
+    api.listSources({
+      source_type: sourceType.value,
+      enabled: enabledFilter.value === null ? null : enabledFilter.value === 'true',
+      page: p,
+      size: s,
+    }),
   20,
 )
+
+watch([sourceType, enabledFilter], reload)
 
 // --- 新增 ---
 const showCreate = ref(false)
@@ -114,14 +130,41 @@ onMounted(async () => {
 <template>
   <div class="page">
     <n-space align="center" justify="space-between" class="head">
-      <n-h2 class="title">采集源</n-h2>
+      <n-space align="center" :size="8">
+        <n-icon size="22" color="#2b7fff"><CloudUploadOutline /></n-icon>
+        <n-h2 class="title">采集源</n-h2>
+      </n-space>
       <n-space>
-        <n-button size="small" @click="refresh">刷新</n-button>
+        <n-button size="small" @click="refresh">
+          <template #icon><n-icon><RefreshOutline /></n-icon></template>
+          刷新
+        </n-button>
         <n-button size="small" type="primary" :disabled="!hasAdminKey" @click="showCreate = true">
+          <template #icon><n-icon><AddOutline /></n-icon></template>
           登记采集源
         </n-button>
       </n-space>
     </n-space>
+
+    <n-card size="small" class="mb">
+      <n-space align="center" :size="12" wrap>
+        <n-select
+          v-model:value="sourceType"
+          :options="toOptions(SOURCE_TYPE_LABEL)"
+          clearable
+          placeholder="全部类型"
+          style="width: 150px"
+        />
+        <n-select
+          v-model:value="enabledFilter"
+          :options="enabledOptions"
+          clearable
+          placeholder="全部状态"
+          style="width: 130px"
+        />
+        <n-text depth="3">共 {{ total }} 个</n-text>
+      </n-space>
+    </n-card>
 
     <n-alert v-if="!hasAdminKey" type="info" class="mb" title="当前为只读">
       登记、采集、启停与删除都需要管理密钥（服务端的
@@ -204,7 +247,11 @@ onMounted(async () => {
       :page="page"
       :page-size="size"
       :item-count="total"
+      show-quick-jumper
+      show-size-picker
+      :page-sizes="[10, 20, 50, 100]"
       @update:page="goto"
+      @update:page-size="setSize"
     />
 
     <n-modal
@@ -236,6 +283,9 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+:deep(tbody tr:nth-child(even)) {
+  background: rgba(128, 128, 128, 0.05);
+}
 .head {
   margin-bottom: 16px;
 }

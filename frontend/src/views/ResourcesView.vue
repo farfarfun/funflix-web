@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CloudDownloadOutline, RefreshOutline } from '@vicons/ionicons5'
 import { onMounted, ref, watch } from 'vue'
 
 import { hasAdminKey } from '@/api/auth'
@@ -11,7 +12,7 @@ import { CHECK_STATUS_LABEL, PROVIDER_LABEL, toOptions } from '@/utils/display'
 const provider = ref<Provider | null>(null)
 const checkStatus = ref<CheckStatus | null>(null)
 
-const { items, total, page, size, loading, error, refresh, goto, reload } = usePagedList(
+const { items, total, page, size, loading, error, refresh, goto, reload, setSize } = usePagedList(
   (p, s) =>
     api.listResources({
       provider: provider.value,
@@ -38,7 +39,10 @@ watch(hasAdminKey, (has) => {
 
 <template>
   <div class="page">
-    <n-h2 class="title">网盘资源</n-h2>
+    <n-space align="center" :size="8" class="title">
+      <n-icon size="22" color="#18a058"><CloudDownloadOutline /></n-icon>
+      <n-h2 class="title-text">网盘资源</n-h2>
+    </n-space>
 
     <n-alert v-if="!hasAdminKey" type="info" class="mb" title="需要管理密钥">
       这里是按链接维度的全量清单，用于排查「某个网盘是不是大面积失效了」，
@@ -64,7 +68,10 @@ watch(hasAdminKey, (has) => {
             placeholder="全部校验状态"
             style="width: 170px"
           />
-          <n-button size="small" @click="refresh">刷新</n-button>
+          <n-button size="small" @click="refresh">
+            <template #icon><n-icon><RefreshOutline /></n-icon></template>
+            刷新
+          </n-button>
           <n-text depth="3">共 {{ total }} 条</n-text>
         </n-space>
       </n-card>
@@ -82,7 +89,11 @@ watch(hasAdminKey, (has) => {
       :page="page"
       :page-size="size"
       :item-count="total"
+      show-quick-jumper
+      show-size-picker
+      :page-sizes="[15, 30, 60, 100]"
       @update:page="goto"
+      @update:page-size="setSize"
     />
   </div>
 </template>
@@ -90,6 +101,9 @@ watch(hasAdminKey, (has) => {
 <style scoped>
 .title {
   margin: 0 0 16px;
+}
+.title-text {
+  margin: 0;
 }
 .mt {
   margin-top: 16px;

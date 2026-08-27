@@ -7,7 +7,7 @@ export interface BreakdownRow {
   value: number
 }
 
-const props = defineProps<{ rows: BreakdownRow[] }>()
+const props = defineProps<{ rows: BreakdownRow[]; colors?: Record<string, string> }>()
 
 // 条形按当前组内最大值归一，而不是按总和 —— 分布里常有一个压倒性的类别，
 // 按总和归一的话其余类别全挤成看不见的一条。
@@ -23,6 +23,8 @@ const max = computed(() => Math.max(...props.rows.map((r) => r.value), 1))
       :percentage="(row.value / max) * 100"
       :show-indicator="false"
       :height="6"
+      :border-radius="3"
+      :color="colors?.[row.key] ?? '#6D5EF8'"
       class="bar"
     />
     <strong class="value">{{ row.value }}</strong>
@@ -34,7 +36,7 @@ const max = computed(() => Math.max(...props.rows.map((r) => r.value), 1))
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 4px 0;
+  padding: 5px 0;
   font-size: 13px;
 }
 .label {

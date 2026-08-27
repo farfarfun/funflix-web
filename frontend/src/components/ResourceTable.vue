@@ -7,6 +7,7 @@ import {
   CHECK_STATUS_TYPE,
   formatSize,
   fromNow,
+  PROVIDER_COLOR,
   PROVIDER_LABEL,
   QUALITY_LABEL,
 } from '@/utils/display'
@@ -43,7 +44,12 @@ async function copy(text: string, what: string) {
       </thead>
       <tbody>
         <tr v-for="r in resources" :key="r.id">
-          <td>{{ PROVIDER_LABEL[r.provider] }}</td>
+          <td>
+            <span class="provider">
+              <span class="dot" :style="{ background: PROVIDER_COLOR[r.provider] }" />
+              {{ PROVIDER_LABEL[r.provider] }}
+            </span>
+          </td>
           <td>
             <n-space :size="6" align="center" :wrap="false">
               <n-button text tag="a" :href="r.url" target="_blank" rel="noopener noreferrer">
@@ -81,6 +87,21 @@ async function copy(text: string, what: string) {
 </template>
 
 <style scoped>
+:deep(tbody tr:nth-child(even)) {
+  background: rgba(128, 128, 128, 0.05);
+}
+.provider {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
 .raw-title {
   font-size: 12px;
   max-width: 260px;

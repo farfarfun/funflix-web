@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { DocumentTextOutline, RefreshOutline } from '@vicons/ionicons5'
 import { onMounted, ref, watch } from 'vue'
 
 import { api } from '@/api/client'
@@ -16,7 +17,7 @@ import {
 const parseStatus = ref<ParseStatus | null>(null)
 const sourceType = ref<SourceType | null>(null)
 
-const { items, total, page, size, loading, error, refresh, goto, reload } = usePagedList(
+const { items, total, page, size, loading, error, refresh, goto, reload, setSize } = usePagedList(
   (p, s) =>
     api.listRaw({
       parse_status: parseStatus.value,
@@ -50,7 +51,10 @@ async function open(id: number) {
 
 <template>
   <div class="page">
-    <n-h2 class="title">原始文本</n-h2>
+    <n-space align="center" :size="8" class="title">
+      <n-icon size="22" color="#d68f00"><DocumentTextOutline /></n-icon>
+      <n-h2 class="title-text">原始文本</n-h2>
+    </n-space>
 
     <n-card size="small">
       <n-space align="center" :size="12" wrap>
@@ -68,7 +72,10 @@ async function open(id: number) {
           placeholder="全部来源类型"
           style="width: 170px"
         />
-        <n-button size="small" @click="refresh">刷新</n-button>
+        <n-button size="small" @click="refresh">
+          <template #icon><n-icon><RefreshOutline /></n-icon></template>
+          刷新
+        </n-button>
         <n-text depth="3">共 {{ total }} 条</n-text>
       </n-space>
     </n-card>
@@ -118,7 +125,11 @@ async function open(id: number) {
       :page="page"
       :page-size="size"
       :item-count="total"
+      show-quick-jumper
+      show-size-picker
+      :page-sizes="[10, 20, 50, 100]"
       @update:page="goto"
+      @update:page-size="setSize"
     />
 
     <n-modal
@@ -167,8 +178,14 @@ async function open(id: number) {
 </template>
 
 <style scoped>
+:deep(tbody tr:nth-child(even)) {
+  background: rgba(128, 128, 128, 0.05);
+}
 .title {
   margin: 0 0 16px;
+}
+.title-text {
+  margin: 0;
 }
 .mt {
   margin-top: 16px;

@@ -1,9 +1,23 @@
 <script setup lang="ts">
+import {
+  BookOutline,
+  CloudDownloadOutline,
+  CloudUploadOutline,
+  DocumentTextOutline,
+  KeyOutline,
+  MoonOutline,
+  SearchOutline,
+  SpeedometerOutline,
+  SunnyOutline,
+} from '@vicons/ionicons5'
 import type { MenuOption } from 'naive-ui'
+import { NIcon } from 'naive-ui'
+import type { Component } from 'vue'
 import { computed, h, ref } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import { adminKey, hasAdminKey, setAdminKey } from '@/api/auth'
+import { pageHeading } from '@/composables/usePageHeading'
 
 defineProps<{ dark: boolean }>()
 defineEmits<{ toggleTheme: [] }>()
@@ -24,6 +38,10 @@ function saveKey() {
   showKey.value = false
 }
 
+function renderIcon(icon: Component) {
+  return () => h(NIcon, null, { default: () => h(icon) })
+}
+
 function link(name: string, label: string) {
   return () => h(RouterLink, { to: { name } }, { default: () => label })
 }
@@ -31,52 +49,118 @@ function link(name: string, label: string) {
 // 网盘资源放在「运维」而不是「发现」：它是按链接维度的全量清单，
 // 后端要求管理密钥才能读，用途是排查「某个网盘是不是大面积失效了」，
 // 而不是给使用者浏览内容 —— 那条路径是作品检索。
-const menuOptions: MenuOption[] = [
-  { type: 'group', label: '发现', key: 'g-discover', children: [
-    { label: link('media', '作品检索'), key: 'media' },
-  ]},
-  { type: 'group', label: '运维', key: 'g-ops', children: [
-    { label: link('dashboard', '流水线大盘'), key: 'dashboard' },
-    { label: link('sources', '采集源'), key: 'sources' },
-    { label: link('raw', '原始文本'), key: 'raw' },
-    { label: link('resources', '网盘资源'), key: 'resources' },
-  ]},
+interface Entry {
+  key: string
+  label: string
+  icon: Component
+}
+const GROUPS: { group: string; entries: Entry[] }[] = [
+  {
+    group: '发现',
+    entries: [{ key: 'media', label: '作品检索', icon: SearchOutline }],
+  },
+  {
+    group: '运维',
+    entries: [
+      { key: 'dashboard', label: '流水线大盘', icon: SpeedometerOutline },
+      { key: 'sources', label: '采集源', icon: CloudUploadOutline },
+      { key: 'raw', label: '原始文本', icon: DocumentTextOutline },
+      { key: 'resources', label: '网盘资源', icon: CloudDownloadOutline },
+    ],
+  },
 ]
+
+const menuOptions: MenuOption[] = GROUPS.map((g) => ({
+  type: 'group',
+  label: g.group,
+  key: `g-${g.group}`,
+  children: g.entries.map((e) => ({
+    label: link(e.key, e.label),
+    key: e.key,
+    icon: renderIcon(e.icon),
+  })),
+}))
 
 // 详情页要让它所属的列表项保持高亮，否则进详情后侧栏看起来什么都没选中
 const activeKey = computed(() => {
   const name = String(route.name ?? '')
   return name === 'media-detail' ? 'media' : name
 })
+
+// 顶部工具条的面包屑：从菜单分组里反查当前页所属分组，比单独的路由 meta 更省一份数据源。
+// 详情页是个例外：光显示所属分组看不出「在看哪一部」，用页面自己上报的 pageHeading 顶上去。
+const breadcrumb = computed(() => {
+  if (route.name === 'media-detail') {
+    return { group: '发现 · 作品检索', label: pageHeading.value ?? '加载中…' }
+  }
+  for (const g of GROUPS) {
+    const entry = g.entries.find((e) => e.key === activeKey.value)
+    if (entry) return { group: g.group, label: entry.label }
+  }
+  return { group: '', label: (route.meta.title as string | undefined) ?? '' }
+})
 </script>
 
 <template>
   <n-layout has-sider position="absolute">
-    <n-layout-sider bordered :width="200" content-style="display:flex;flex-direction:column">
+    <n-layout-sider bordered :width="212" content-style="display:flex;flex-direction:column">
       <div class="brand">
-        <span class="brand-name">funflix</span>
-        <span class="brand-sub">影视资源聚合</span>
+        <div class="brand-mark">F</div>
+        <div class="brand-text">
+          <span class="brand-name">funflix</span>
+          <span class="brand-sub">影视资源聚合</span>
+        </div>
       </div>
-      <n-menu :value="activeKey" :options="menuOptions" :indent="18" />
-      <div class="sider-footer">
-        <n-button quaternary size="small" block @click="openKeyDialog">
-          <n-badge :dot="!hasAdminKey" :offset="[4, -2]" type="warning">管理密钥</n-badge>
-        </n-button>
-        <n-button quaternary size="small" block @click="$emit('toggleTheme')">
-          {{ dark ? '☾ 深色' : '☀ 浅色' }}
-        </n-button>
-        <n-button quaternary size="small" block tag="a" href="/docs" target="_blank">
-          接口文档
-        </n-button>
-      </div>
+      <n-menu :value="activeKey" :options="menuOptions" :indent="16" class="menu" />
     </n-layout-sider>
 
-    <n-layout-content content-style="padding:24px" :native-scrollbar="false">
-      <RouterView v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
-          <component :is="Component" />
-        </transition>
-      </RouterView>
+    <n-layout-content content-style="padding:0" :native-scrollbar="false">
+      <div class="topbar" :style="{ background: dark ? 'rgba(24, 24, 28, 0.86)' : 'rgba(255, 255, 255, 0.86)' }">
+        <div class="crumb">
+          <span v-if="breadcrumb.group" class="crumb-group">{{ breadcrumb.group }}</span>
+          <span v-if="breadcrumb.group" class="crumb-sep">/</span>
+          <span class="crumb-label">{{ breadcrumb.label }}</span>
+        </div>
+        <n-space :size="4" align="center">
+          <n-tooltip>
+            <template #trigger>
+              <n-button quaternary circle @click="openKeyDialog">
+                <n-badge :dot="!hasAdminKey" :offset="[-2, 2]" type="warning">
+                  <n-icon size="18"><KeyOutline /></n-icon>
+                </n-badge>
+              </n-button>
+            </template>
+            管理密钥
+          </n-tooltip>
+          <n-tooltip>
+            <template #trigger>
+              <n-button quaternary circle @click="$emit('toggleTheme')">
+                <n-icon size="18">
+                  <MoonOutline v-if="!dark" />
+                  <SunnyOutline v-else />
+                </n-icon>
+              </n-button>
+            </template>
+            {{ dark ? '切换到浅色' : '切换到深色' }}
+          </n-tooltip>
+          <n-tooltip>
+            <template #trigger>
+              <n-button quaternary circle tag="a" href="/docs" target="_blank">
+                <n-icon size="18"><BookOutline /></n-icon>
+              </n-button>
+            </template>
+            接口文档
+          </n-tooltip>
+        </n-space>
+      </div>
+
+      <div class="content">
+        <RouterView v-slot="{ Component }">
+          <transition name="fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </RouterView>
+      </div>
     </n-layout-content>
 
     <n-modal v-model:show="showKey" preset="card" title="管理密钥" style="max-width: 480px">
@@ -110,32 +194,72 @@ const activeKey = computed(() => {
 
 <style scoped>
 .brand {
-  padding: 20px 20px 12px;
+  padding: 20px 18px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand-mark {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, #6d5ef8, #a78bfa);
+  color: #fff;
+  font-weight: 700;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+}
+.brand-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
+  min-width: 0;
 }
 .brand-name {
-  font-size: 19px;
+  font-size: 16px;
   font-weight: 600;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.3px;
 }
 .brand-sub {
-  font-size: 12px;
+  font-size: 11px;
   opacity: 0.55;
 }
-.sider-footer {
-  margin-top: auto;
-  padding: 12px;
+.menu {
+  padding: 0 6px;
+}
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 52px;
+  padding: 0 24px;
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.14);
+  backdrop-filter: blur(8px);
+}
+.crumb {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
   gap: 6px;
 }
-.key-hint {
-  font-size: 12px;
-  display: block;
-  margin-top: 10px;
-  line-height: 1.6;
+.crumb-group {
+  opacity: 0.5;
+}
+.crumb-sep {
+  opacity: 0.3;
+}
+.crumb-label {
+  font-weight: 600;
+}
+.content {
+  padding: 24px;
 }
 .fade-enter-active,
 .fade-leave-active {

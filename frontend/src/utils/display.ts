@@ -13,6 +13,16 @@ export const MEDIA_TYPE_LABEL: Record<MediaType, string> = {
   unknown: '未知',
 }
 
+/** 按作品类型给卡片/详情页一条强调色，扫一眼就能分辨电影/剧集/动漫……浅深色主题共用同一套，都是中高饱和度色，两边对比度都够。 */
+export const MEDIA_TYPE_COLOR: Record<MediaType, string> = {
+  movie: '#6d5ef8',
+  tv: '#2b7fff',
+  anime: '#e0529c',
+  variety: '#d68f00',
+  documentary: '#18a058',
+  unknown: '#9095a3',
+}
+
 export const PROVIDER_LABEL: Record<Provider, string> = {
   quark: '夸克',
   uc: 'UC',
@@ -24,6 +34,20 @@ export const PROVIDER_LABEL: Record<Provider, string> = {
   xunlei: '迅雷',
   magnet: '磁力',
   other: '其他',
+}
+
+/** 各网盘品牌色，贴近它们的实际视觉识别色，扫资源表时一眼分辨来源。 */
+export const PROVIDER_COLOR: Record<Provider, string> = {
+  quark: '#6d5ef8',
+  uc: '#ff8a00',
+  alipan: '#2b7fff',
+  baidu: '#2468f2',
+  pan115: '#00a3ff',
+  lanzou: '#00c2a8',
+  tianyi: '#d6336c',
+  xunlei: '#2e8b57',
+  magnet: '#9095a3',
+  other: '#9095a3',
 }
 
 export const QUALITY_LABEL: Record<Quality, string> = {
@@ -56,6 +80,18 @@ export const CHECK_STATUS_TYPE: Record<CheckStatus, NTagType> = {
   error: 'error',
 }
 
+/** 与上面的语义类型一一对应的十六进制色，供进度条这类不能直接吃 n-tag type 的地方用。 */
+export const CHECK_STATUS_COLOR: Record<CheckStatus, string> = {
+  unchecked: '#9095a3',
+  checking: '#2080f0',
+  valid: '#18a058',
+  invalid: '#d03050',
+  need_password: '#f0a020',
+  rate_limited: '#f0a020',
+  unsupported: '#9095a3',
+  error: '#d03050',
+}
+
 export const PARSE_STATUS_LABEL: Record<ParseStatus, string> = {
   pending: '待解析',
   running: '解析中',
@@ -70,6 +106,14 @@ export const PARSE_STATUS_TYPE: Record<ParseStatus, NTagType> = {
   done: 'success',
   failed: 'error',
   skipped: 'warning',
+}
+
+export const PARSE_STATUS_COLOR: Record<ParseStatus, string> = {
+  pending: '#9095a3',
+  running: '#2080f0',
+  done: '#18a058',
+  failed: '#d03050',
+  skipped: '#f0a020',
 }
 
 export const SOURCE_TYPE_LABEL: Record<SourceType, string> = {
