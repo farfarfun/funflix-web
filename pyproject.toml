@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "funflix-web"
-version = "0.1.1"
+version = "0.1.2"
 description = "funflix 的 Web 界面：单进程同时提供后端接口与前端界面"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -22,6 +22,7 @@ dependencies = [
     "typer>=0.12",
 ]
 license = "MIT"
+license-files = ["LICENSE"]
 
 [[project.authors]]
 name = "牛哥"
@@ -40,7 +41,6 @@ funflix-web = "funflix_web.cli:app"
 Organization = "https://github.com/farfarfun"
 Repository = "https://github.com/farfarfun/funflix-web"
 Releases = "https://github.com/farfarfun/funflix-web/releases"
-
 
 [[project.maintainers]]
 name = "牛哥"
