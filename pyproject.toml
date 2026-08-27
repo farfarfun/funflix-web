@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "funflix-web"
-version = "0.1.2"
+version = "0.1.3"
 description = "funflix 的 Web 界面：单进程同时提供后端接口与前端界面"
 readme = "README.md"
 requires-python = ">=3.12"
