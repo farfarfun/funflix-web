@@ -6,10 +6,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { hasAdminKey } from '@/api/auth'
 import { api } from '@/api/client'
 import type { MediaType } from '@/api/types'
+import PosterCard from '@/components/PosterCard.vue'
 import { usePagedList } from '@/composables/usePagedList'
-import { MEDIA_TYPE_COLOR, MEDIA_TYPE_ICON, MEDIA_TYPE_LABEL, toOptions } from '@/utils/display'
+import { MEDIA_TYPE_COLOR, MEDIA_TYPE_LABEL } from '@/utils/display'
 
-/** 首屏骨架屏的卡片数：够铺满一屏又不会渲染太多占位节点。 */
+/** 首屏骨架屏的占位数：够铺满一屏又不会渲染太多占位节点。 */
 const SKELETON_COUNT = 12
 
 const route = useRoute()
@@ -19,6 +20,8 @@ const keyword = ref('')
 const mediaType = ref<MediaType | null>(null)
 const year = ref<number | null>(null)
 const validOnly = ref(false)
+
+const TYPE_OPTIONS = Object.keys(MEDIA_TYPE_LABEL) as MediaType[]
 
 // 解构出来才能在模板里自动解包 —— 对象里的 ref 不会被模板 unwrap
 const { items, total, page, size, loading, error, refresh, goto, reload } = usePagedList(
@@ -34,12 +37,8 @@ const { items, total, page, size, loading, error, refresh, goto, reload } = useP
   24,
 )
 
-const typeOptions = toOptions(MEDIA_TYPE_LABEL)
-
-// 封面图挂了（链接失效、跨域）就退回图标占位，别留一个破图标在格子里。
-const brokenPosters = ref(new Set<number>())
-function onPosterError(id: number) {
-  brokenPosters.value.add(id)
+function selectType(t: MediaType | null) {
+  mediaType.value = mediaType.value === t ? null : t
 }
 
 // --- 筛选条件与地址栏同步 ---------------------------------------------------
@@ -139,26 +138,30 @@ onMounted(() => {
 
 <template>
   <div class="page">
-    <n-h2 class="title">作品检索</n-h2>
+    <div class="toolbar">
+      <n-input v-model:value="keyword" clearable placeholder="搜索剧名，支持别名与简繁" class="search">
+        <template #prefix><n-icon :depth="3"><SearchOutline /></n-icon></template>
+        <template v-if="debouncing" #suffix><n-spin :size="14" /></template>
+      </n-input>
 
-    <n-card size="small">
-      <n-space align="center" :size="12" wrap>
-        <n-input
-          v-model:value="keyword"
-          clearable
-          placeholder="搜索剧名，支持别名与简繁"
-          style="width: 280px"
-        >
-          <template #prefix><n-icon :depth="3"><SearchOutline /></n-icon></template>
-          <template v-if="debouncing" #suffix><n-spin :size="14" /></template>
-        </n-input>
-        <n-select
-          v-model:value="mediaType"
-          :options="typeOptions"
-          clearable
-          placeholder="全部类型"
-          style="width: 140px"
-        />
+      <div class="filters">
+        <div class="pills">
+          <button type="button" class="pill" :class="{ active: mediaType === null }" @click="selectType(null)">
+            全部
+          </button>
+          <button
+            v-for="t in TYPE_OPTIONS"
+            :key="t"
+            type="button"
+            class="pill"
+            :class="{ active: mediaType === t }"
+            :style="mediaType === t ? { background: MEDIA_TYPE_COLOR[t], borderColor: MEDIA_TYPE_COLOR[t] } : {}"
+            @click="selectType(t)"
+          >
+            {{ MEDIA_TYPE_LABEL[t] }}
+          </button>
+        </div>
+
         <n-input-number
           v-model:value="year"
           clearable
@@ -166,24 +169,19 @@ onMounted(() => {
           :min="1888"
           :max="2100"
           placeholder="年份"
-          style="width: 110px"
+          class="year-input"
         />
         <n-checkbox v-model:checked="validOnly">只看有可用资源</n-checkbox>
-        <n-text depth="3">共 {{ total }} 部</n-text>
-      </n-space>
-    </n-card>
+        <n-text depth="3" class="total">共 {{ total }} 部</n-text>
+      </div>
+    </div>
 
     <n-alert v-if="error" type="error" class="mt">{{ error }}</n-alert>
 
     <!-- 首屏（还没有任何数据可显示）用骨架屏，比整页转圈更快出内容感；
          换页/改筛选时列表里已经有旧数据，走下面的 n-spin 蒙层就够了 -->
     <div v-if="loading && items.length === 0 && !error" class="grid mt">
-      <n-card v-for="i in SKELETON_COUNT" :key="i" size="small" class="card">
-        <n-skeleton class="cover" style="width: 100%" :sharp="false" />
-        <n-skeleton text style="margin-top: 10px; width: 90%" />
-        <n-skeleton text style="width: 50%" />
-        <n-skeleton text style="margin-top: 10px; width: 40%" />
-      </n-card>
+      <n-skeleton v-for="i in SKELETON_COUNT" :key="i" class="skeleton-poster" :sharp="false" />
     </div>
 
     <n-spin v-else :show="loading">
@@ -198,44 +196,7 @@ onMounted(() => {
       </n-empty>
 
       <div v-else class="grid mt">
-        <n-card
-          v-for="item in items"
-          :key="item.id"
-          size="small"
-          hoverable
-          class="card"
-          @click="$router.push({ name: 'media-detail', params: { id: item.id } })"
-        >
-          <div
-            class="cover"
-            :style="{ background: `linear-gradient(155deg, ${MEDIA_TYPE_COLOR[item.media_type]}26, ${MEDIA_TYPE_COLOR[item.media_type]}0d)` }"
-          >
-            <img
-              v-if="item.poster_url && !brokenPosters.has(item.id)"
-              class="cover-img"
-              :src="item.poster_url"
-              :alt="item.title"
-              loading="lazy"
-              @error="onPosterError(item.id)"
-            />
-            <n-icon v-else :size="34" :color="MEDIA_TYPE_COLOR[item.media_type]">
-              <component :is="MEDIA_TYPE_ICON[item.media_type]" />
-            </n-icon>
-          </div>
-          <div class="card-title" :title="item.title">{{ item.title }}</div>
-          <n-space :size="4" class="mt-xs">
-            <n-tag size="small" :bordered="false">{{ MEDIA_TYPE_LABEL[item.media_type] }}</n-tag>
-            <n-tag v-if="item.year" size="small" :bordered="false" type="info">
-              {{ item.year }}
-            </n-tag>
-          </n-space>
-          <div class="card-meta">
-            <n-text depth="3">{{ item.resource_count }} 条资源</n-text>
-            <n-text v-if="item.valid_resource_count > 0" type="success">
-              {{ item.valid_resource_count }} 条可用
-            </n-text>
-          </div>
-        </n-card>
+        <PosterCard v-for="item in items" :key="item.id" :item="item" />
       </div>
     </n-spin>
 
@@ -252,63 +213,71 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.title {
-  margin: 0 0 16px;
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.search {
+  max-width: 420px;
+}
+.filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pill {
+  appearance: none;
+  border: 1px solid rgba(128, 128, 128, 0.28);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.15s var(--ease), transform 0.15s var(--ease), background 0.15s var(--ease);
+}
+.pill:hover {
+  opacity: 1;
+}
+.pill.active {
+  opacity: 1;
+  color: #fff;
+  border-color: transparent;
+  background: var(--n-primary-color, #6d5ef8);
+}
+.year-input {
+  width: 110px;
+}
+.total {
+  margin-left: auto;
 }
 .mt {
-  margin-top: 16px;
-}
-.mt-xs {
-  margin-top: 8px;
+  margin-top: 20px;
 }
 .mt-lg {
-  margin-top: 48px;
+  margin-top: 64px;
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 18px;
 }
-.card {
-  cursor: pointer;
-  transition: box-shadow 0.15s var(--ease), transform 0.15s var(--ease);
-}
-.card:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
-}
-.cover {
+.skeleton-poster {
   aspect-ratio: 2 / 3;
-  border-radius: var(--radius-sm);
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-.cover-img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.card-title {
-  font-weight: 600;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  overflow: hidden;
-  min-height: 2.6em;
-  line-height: 1.3;
-}
-.card-meta {
-  margin-top: 10px;
-  display: flex;
-  justify-content: space-between;
-  font-size: 12px;
+  border-radius: var(--radius-md);
 }
 .pager {
-  margin-top: 20px;
+  margin-top: 28px;
   justify-content: center;
 }
 </style>

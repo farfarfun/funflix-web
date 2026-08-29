@@ -30,7 +30,7 @@ async function copy(text: string, what: string) {
 // --- 只看有效 / 按画质·大小排序 --------------------------------------------
 // 详情接口一次性把这部作品的资源全量返回（最多 200 条），客户端筛选/排序即可，
 // 不需要再打一次接口。有效资源本来就由后端排在前面，这里只是让「只看有效」
-// 和「按画质/大小挑」这两件事不用眼睛在表格里一行行扫。
+// 和「按画质/大小挑」这两件事不用眼睛在列表里一行行扫。
 
 const validOnly = ref(false)
 
@@ -72,8 +72,21 @@ const displayResources = computed(() => {
 
 <template>
   <div>
-    <n-space v-if="resources.length > 0" align="center" :size="12" class="toolbar">
+    <n-space v-if="resources.length > 0" align="center" :size="12" class="toolbar" :wrap="true">
       <n-checkbox v-model:checked="validOnly">只看有效</n-checkbox>
+      <div class="sort-group">
+        <button
+          type="button"
+          class="sort-chip"
+          :class="{ active: sortKey === 'quality' }"
+          @click="toggleSort('quality')"
+        >
+          画质{{ sortArrow('quality') }}
+        </button>
+        <button type="button" class="sort-chip" :class="{ active: sortKey === 'size' }" @click="toggleSort('size')">
+          大小{{ sortArrow('size') }}
+        </button>
+      </div>
       <n-text depth="3" style="font-size: 12px">
         {{ displayResources.length }} / {{ resources.length }} 条
       </n-text>
@@ -86,84 +99,104 @@ const displayResources = computed(() => {
         description="没有满足条件的资源"
         style="padding: 32px 0"
       />
-      <n-table v-else :single-line="false" size="small" class="res-table">
-        <thead>
-          <tr>
-            <th class="col-provider">网盘</th>
-            <th>链接</th>
-            <th class="col-quality sortable" @click="toggleSort('quality')">画质{{ sortArrow('quality') }}</th>
-            <th class="col-episode">集数</th>
-            <th class="col-size sortable" @click="toggleSort('size')">大小{{ sortArrow('size') }}</th>
-            <th class="col-check">校验</th>
-            <th class="col-lastseen">最近出现</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="r in displayResources" :key="r.id">
-            <td class="col-provider">
-              <span class="provider">
-                <span class="dot" :style="{ background: PROVIDER_COLOR[r.provider] }" />
-                {{ PROVIDER_LABEL[r.provider] }}
-              </span>
-            </td>
-            <td>
-              <n-space :size="6" align="center" :wrap="false">
-                <n-button text tag="a" :href="r.url" target="_blank" rel="noopener noreferrer">
-                  打开
-                </n-button>
-                <n-button text type="primary" @click="copy(r.url, '链接')">复制</n-button>
-                <n-tag v-if="r.passcode" size="small" :bordered="false" @click="copy(r.passcode!, '提取码')">
-                  码 {{ r.passcode }}
-                </n-tag>
-                <n-text v-if="r.title_raw" depth="3" class="raw-title" :title="r.title_raw">
-                  {{ r.title_raw }}
-                </n-text>
-              </n-space>
-              <!-- 窄屏收起独立列后，这几项挪到链接下面一行 -->
-              <n-space class="mobile-meta" :size="6" align="center">
-                <n-tag size="tiny" :bordered="false">{{ QUALITY_LABEL[r.quality] }}</n-tag>
-                <span v-if="r.episode_info">{{ r.episode_info }}</span>
-                <span>{{ formatSize(r.size_bytes) }}</span>
-                <n-tag size="tiny" :bordered="false" :type="CHECK_STATUS_TYPE[r.check_status]">
-                  {{ CHECK_STATUS_LABEL[r.check_status] }}
-                </n-tag>
-                <span>{{ fromNow(r.last_seen_at) }}</span>
-              </n-space>
-            </td>
-            <td class="col-quality">{{ QUALITY_LABEL[r.quality] }}</td>
-            <td class="col-episode">{{ r.episode_info ?? '-' }}</td>
-            <td class="col-size">{{ formatSize(r.size_bytes) }}</td>
-            <td class="col-check">
-              <n-tag size="small" :bordered="false" :type="CHECK_STATUS_TYPE[r.check_status]">
-                {{ CHECK_STATUS_LABEL[r.check_status] }}
+      <div v-else class="res-list">
+        <div v-for="r in displayResources" :key="r.id" class="res-row">
+          <div class="res-provider">
+            <span class="dot" :style="{ background: PROVIDER_COLOR[r.provider] }" />
+            {{ PROVIDER_LABEL[r.provider] }}
+          </div>
+
+          <div class="res-main">
+            <n-space :size="6" align="center" :wrap="false">
+              <n-button text tag="a" :href="r.url" target="_blank" rel="noopener noreferrer">
+                打开
+              </n-button>
+              <n-button text type="primary" @click="copy(r.url, '链接')">复制</n-button>
+              <n-tag v-if="r.passcode" size="small" :bordered="false" @click="copy(r.passcode!, '提取码')">
+                码 {{ r.passcode }}
               </n-tag>
-            </td>
-            <td class="col-lastseen">
-              <n-tooltip>
-                <template #trigger>
-                  <span>{{ fromNow(r.last_seen_at) }}</span>
-                </template>
-                被 {{ r.seen_count }} 条分享提到过
-              </n-tooltip>
-            </td>
-          </tr>
-        </tbody>
-      </n-table>
+            </n-space>
+            <n-text v-if="r.title_raw" depth="3" class="raw-title" :title="r.title_raw">
+              {{ r.title_raw }}
+            </n-text>
+          </div>
+
+          <div class="res-meta">
+            <n-tag size="small" :bordered="false">{{ QUALITY_LABEL[r.quality] }}</n-tag>
+            <span v-if="r.episode_info" class="meta-item">{{ r.episode_info }}</span>
+            <span class="meta-item">{{ formatSize(r.size_bytes) }}</span>
+            <n-tag size="small" :bordered="false" :type="CHECK_STATUS_TYPE[r.check_status]">
+              {{ CHECK_STATUS_LABEL[r.check_status] }}
+            </n-tag>
+            <n-tooltip>
+              <template #trigger>
+                <span class="meta-item">{{ fromNow(r.last_seen_at) }}</span>
+              </template>
+              被 {{ r.seen_count }} 条分享提到过
+            </n-tooltip>
+          </div>
+        </div>
+      </div>
     </n-spin>
   </div>
 </template>
 
 <style scoped>
 .toolbar {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
-:deep(tbody tr:nth-child(even)) {
-  background: rgba(128, 128, 128, 0.05);
+.sort-group {
+  display: flex;
+  gap: 6px;
 }
-.provider {
+.sort-chip {
+  appearance: none;
+  border: 1px solid rgba(128, 128, 128, 0.28);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.15s var(--ease), color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.sort-chip:hover {
+  opacity: 1;
+}
+.sort-chip.active {
+  opacity: 1;
+  color: var(--n-primary-color, #6d5ef8);
+  border-color: var(--n-primary-color, #6d5ef8);
+}
+.res-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.res-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--poster-surface);
+  border: 1px solid rgba(128, 128, 128, 0.12);
+  transition: background 0.15s var(--ease);
+}
+.res-row:hover {
+  background: rgba(128, 128, 128, 0.1);
+}
+.res-provider {
+  flex: none;
+  width: 84px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
 }
 .dot {
@@ -172,60 +205,29 @@ const displayResources = computed(() => {
   height: 7px;
   border-radius: 50%;
 }
+.res-main {
+  flex: 1 1 260px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 .raw-title {
   font-size: 12px;
-  max-width: 260px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  display: inline-block;
-  vertical-align: middle;
 }
-.col-provider {
-  width: 84px;
-}
-.col-quality {
-  width: 90px;
-}
-.col-episode {
-  width: 110px;
-}
-.col-size {
-  width: 90px;
-}
-.col-check {
-  width: 100px;
-}
-.col-lastseen {
-  width: 110px;
-}
-.sortable {
-  cursor: pointer;
-  user-select: none;
-  white-space: nowrap;
-}
-.sortable:hover {
-  color: var(--n-title-text-color, inherit);
-  opacity: 0.8;
-}
-.mobile-meta {
-  display: none;
-  margin-top: 4px;
-  font-size: 12px;
-  opacity: 0.65;
+.res-meta {
+  flex: none;
+  display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  opacity: 0.85;
 }
-
-/* 窄屏下 7 列表格挤不下：只留网盘/链接/集数，其余信息挪到链接下面一行 */
-@media (max-width: 720px) {
-  .res-table .col-quality,
-  .res-table .col-size,
-  .res-table .col-check,
-  .res-table .col-lastseen {
-    display: none;
-  }
-  .mobile-meta {
-    display: flex;
-  }
+.meta-item {
+  white-space: nowrap;
 }
 </style>

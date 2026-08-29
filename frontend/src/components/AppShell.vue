@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   BookOutline,
+  ChevronDownOutline,
   CloudDownloadOutline,
   CloudUploadOutline,
   DocumentTextOutline,
@@ -11,11 +12,11 @@ import {
   SpeedometerOutline,
   SunnyOutline,
 } from '@vicons/ionicons5'
-import type { MenuOption } from 'naive-ui'
+import type { DropdownOption, MenuOption } from 'naive-ui'
 import { NIcon } from 'naive-ui'
 import type { Component } from 'vue'
 import { computed, h, ref, watch } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { adminKey, hasAdminKey, setAdminKey } from '@/api/auth'
 import { pageHeading } from '@/composables/usePageHeading'
@@ -24,8 +25,9 @@ defineProps<{ dark: boolean }>()
 defineEmits<{ toggleTheme: [] }>()
 
 const route = useRoute()
+const router = useRouter()
 
-// --- 移动端侧边栏：窄屏下 212px 固定侧栏会把内容区挤没，改成汉堡按钮开抽屉 ---
+// --- 移动端导航：窄屏下横向导航挤不下，改成汉堡按钮开抽屉 ---
 const mobileMenuOpen = ref(false)
 
 // --- 管理密钥 ---
@@ -74,7 +76,8 @@ const GROUPS: { group: string; entries: Entry[] }[] = [
   },
 ]
 
-const menuOptions: MenuOption[] = GROUPS.map((g) => ({
+// 移动端抽屉仍然用 n-menu 摊开两组——它是叠在内容上方的浮层，不像常驻侧栏那样定义「这是个后台系统」
+const drawerMenuOptions: MenuOption[] = GROUPS.map((g) => ({
   type: 'group',
   label: g.group,
   key: `g-${g.group}`,
@@ -85,14 +88,27 @@ const menuOptions: MenuOption[] = GROUPS.map((g) => ({
   })),
 }))
 
-// 详情页要让它所属的列表项保持高亮，否则进详情后侧栏看起来什么都没选中
+// 桌面顶栏只留「作品检索」单独露出，其余 4 个运维页收进一个下拉——
+// 5 个目的地全摊平在顶栏会重新变回「后台导航条」的观感
+const opsEntries = GROUPS.find((g) => g.group === '运维')?.entries ?? []
+const opsOptions: DropdownOption[] = opsEntries.map((e) => ({
+  key: e.key,
+  label: e.label,
+  icon: renderIcon(e.icon),
+}))
+
+function onOpsSelect(key: string | number) {
+  void router.push({ name: String(key) })
+}
+
+// 详情页要让「作品检索」保持高亮，否则进详情后顶栏看起来什么都没选中
 const activeKey = computed(() => {
   const name = String(route.name ?? '')
   return name === 'media-detail' ? 'media' : name
 })
+const isOpsActive = computed(() => opsEntries.some((e) => e.key === activeKey.value))
 
-// 顶部工具条的面包屑：从菜单分组里反查当前页所属分组，比单独的路由 meta 更省一份数据源。
-// 详情页是个例外：光显示所属分组看不出「在看哪一部」，用页面自己上报的 pageHeading 顶上去。
+// 顶栏中间的面包屑：从分组里反查当前页所属分组，详情页例外，用页面自己上报的 pageHeading
 const breadcrumb = computed(() => {
   if (route.name === 'media-detail') {
     return { group: '发现 · 作品检索', label: pageHeading.value ?? '加载中…' }
@@ -114,69 +130,82 @@ watch(
 </script>
 
 <template>
-  <n-layout has-sider position="absolute">
-    <n-layout-sider bordered :width="212" class="sider" content-style="display:flex;flex-direction:column">
-      <div class="brand">
-        <div class="brand-mark">F</div>
-        <div class="brand-text">
-          <span class="brand-name">funflix</span>
-          <span class="brand-sub">影视资源聚合</span>
-        </div>
-      </div>
-      <n-menu :value="activeKey" :options="menuOptions" :indent="16" class="menu" />
-    </n-layout-sider>
+  <div class="shell">
+    <header class="navbar" :style="{ background: dark ? 'rgba(11, 12, 16, 0.86)' : 'rgba(255, 255, 255, 0.86)' }">
+      <div class="navbar-inner">
+        <div class="nav-left">
+          <RouterLink :to="{ name: 'media' }" class="brand">
+            <div class="brand-mark">F</div>
+            <span class="brand-name">funflix</span>
+          </RouterLink>
 
-    <n-layout-content content-style="padding:0" :native-scrollbar="false">
-      <div class="topbar" :style="{ background: dark ? 'rgba(24, 24, 28, 0.86)' : 'rgba(255, 255, 255, 0.86)' }">
-        <div class="crumb">
+          <nav class="nav-links">
+            <RouterLink :to="{ name: 'media' }" class="nav-link" :class="{ active: activeKey === 'media' }">
+              作品检索
+            </RouterLink>
+            <n-dropdown trigger="click" :options="opsOptions" @select="onOpsSelect">
+              <span class="nav-link nav-link-dropdown" :class="{ active: isOpsActive }">
+                运维
+                <n-icon size="12"><ChevronDownOutline /></n-icon>
+              </span>
+            </n-dropdown>
+          </nav>
+        </div>
+
+        <div class="nav-center">
+          <span v-if="breadcrumb.label" class="crumb">
+            <span v-if="breadcrumb.group" class="crumb-group">{{ breadcrumb.group }}</span>
+            <span v-if="breadcrumb.group" class="crumb-sep">/</span>
+            <span class="crumb-label">{{ breadcrumb.label }}</span>
+          </span>
+        </div>
+
+        <div class="nav-right">
           <n-button quaternary circle size="small" class="hamburger" @click="mobileMenuOpen = true">
             <n-icon size="18"><MenuOutline /></n-icon>
           </n-button>
-          <span v-if="breadcrumb.group" class="crumb-group">{{ breadcrumb.group }}</span>
-          <span v-if="breadcrumb.group" class="crumb-sep">/</span>
-          <span class="crumb-label">{{ breadcrumb.label }}</span>
+          <n-space :size="2" align="center">
+            <n-tooltip>
+              <template #trigger>
+                <n-button quaternary circle @click="openKeyDialog">
+                  <n-badge :dot="!hasAdminKey" :offset="[-2, 2]" type="warning">
+                    <n-icon size="18"><KeyOutline /></n-icon>
+                  </n-badge>
+                </n-button>
+              </template>
+              管理密钥
+            </n-tooltip>
+            <n-tooltip>
+              <template #trigger>
+                <n-button quaternary circle @click="$emit('toggleTheme')">
+                  <n-icon size="18">
+                    <MoonOutline v-if="!dark" />
+                    <SunnyOutline v-else />
+                  </n-icon>
+                </n-button>
+              </template>
+              {{ dark ? '切换到浅色' : '切换到深色' }}
+            </n-tooltip>
+            <n-tooltip>
+              <template #trigger>
+                <n-button quaternary circle tag="a" href="/docs" target="_blank">
+                  <n-icon size="18"><BookOutline /></n-icon>
+                </n-button>
+              </template>
+              接口文档
+            </n-tooltip>
+          </n-space>
         </div>
-        <n-space :size="4" align="center">
-          <n-tooltip>
-            <template #trigger>
-              <n-button quaternary circle @click="openKeyDialog">
-                <n-badge :dot="!hasAdminKey" :offset="[-2, 2]" type="warning">
-                  <n-icon size="18"><KeyOutline /></n-icon>
-                </n-badge>
-              </n-button>
-            </template>
-            管理密钥
-          </n-tooltip>
-          <n-tooltip>
-            <template #trigger>
-              <n-button quaternary circle @click="$emit('toggleTheme')">
-                <n-icon size="18">
-                  <MoonOutline v-if="!dark" />
-                  <SunnyOutline v-else />
-                </n-icon>
-              </n-button>
-            </template>
-            {{ dark ? '切换到浅色' : '切换到深色' }}
-          </n-tooltip>
-          <n-tooltip>
-            <template #trigger>
-              <n-button quaternary circle tag="a" href="/docs" target="_blank">
-                <n-icon size="18"><BookOutline /></n-icon>
-              </n-button>
-            </template>
-            接口文档
-          </n-tooltip>
-        </n-space>
       </div>
+    </header>
 
-      <div class="content">
-        <RouterView v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
-            <component :is="Component" />
-          </transition>
-        </RouterView>
-      </div>
-    </n-layout-content>
+    <main class="content">
+      <RouterView v-slot="{ Component }">
+        <transition name="fade" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </RouterView>
+    </main>
 
     <n-modal v-model:show="showKey" preset="card" title="管理密钥" style="max-width: 480px">
       <n-form-item label="X-API-Key" :show-feedback="false">
@@ -207,97 +236,139 @@ watch(
 
     <n-drawer v-model:show="mobileMenuOpen" placement="left" :width="240" class="mobile-drawer">
       <n-drawer-content title="funflix" closable :native-scrollbar="false">
-        <n-menu :value="activeKey" :options="menuOptions" :indent="16" />
+        <n-menu :value="activeKey" :options="drawerMenuOptions" :indent="16" />
       </n-drawer-content>
     </n-drawer>
-  </n-layout>
+  </div>
 </template>
 
 <style scoped>
+.shell {
+  min-height: 100%;
+}
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  height: 56px;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.14);
+  backdrop-filter: blur(10px);
+}
+.navbar-inner {
+  height: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
 .brand {
-  padding: 20px 18px 16px;
+  flex: none;
   display: flex;
   align-items: center;
   gap: 10px;
+  text-decoration: none;
+  color: inherit;
 }
 .brand-mark {
-  flex: none;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: var(--radius-sm);
   background: linear-gradient(135deg, #6d5ef8, #a78bfa);
   color: #fff;
   font-weight: 700;
-  font-size: 16px;
+  font-size: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow-sm);
 }
-.brand-text {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-}
 .brand-name {
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.3px;
 }
-.brand-sub {
-  font-size: 11px;
-  opacity: 0.55;
-}
-.menu {
-  padding: 0 6px;
-}
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  height: 52px;
-  padding: 0 24px;
+.nav-left {
+  flex: none;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid rgba(128, 128, 128, 0.14);
-  backdrop-filter: blur(8px);
+  gap: 28px;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.62;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
+  transition: opacity 0.15s var(--ease);
+}
+.nav-link:hover {
+  opacity: 0.95;
+}
+.nav-link.active {
+  opacity: 1;
+  color: var(--n-primary-color, #6d5ef8);
+}
+.nav-center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
 }
 .crumb {
   font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.hamburger {
-  display: none;
-  margin-right: 4px;
-}
-
-/* 窄屏：212px 固定侧栏会把内容区挤没，收起来改走抽屉 */
-@media (max-width: 768px) {
-  .sider {
-    display: none;
-  }
-  .hamburger {
-    display: inline-flex;
-  }
-  .content {
-    padding: 16px;
-  }
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .crumb-group {
   opacity: 0.5;
 }
 .crumb-sep {
   opacity: 0.3;
+  margin: 0 4px;
 }
 .crumb-label {
   font-weight: 600;
 }
+.nav-right {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.hamburger {
+  display: none;
+}
 .content {
-  padding: 24px;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 28px 24px 48px;
+}
+
+/* 窄屏：横向导航链接与中间面包屑挤不下，收起来改走抽屉 */
+@media (max-width: 768px) {
+  .nav-links,
+  .nav-center {
+    display: none;
+  }
+  .hamburger {
+    display: inline-flex;
+  }
+  .content {
+    padding: 16px 16px 32px;
+  }
 }
 .fade-enter-active,
 .fade-leave-active {

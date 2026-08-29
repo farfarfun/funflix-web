@@ -1,14 +1,22 @@
 <script setup lang="ts">
 import type { GlobalThemeOverrides } from 'naive-ui'
 import { darkTheme, dateZhCN, zhCN } from 'naive-ui'
-import { computed, ref } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 
 import AppShell from '@/components/AppShell.vue'
 
 const STORAGE_KEY = 'funflix.theme'
 
-const dark = ref(localStorage.getItem(STORAGE_KEY) === 'dark')
+// 媒体站默认深色（Netflix/Plex/Jellyfin 都是），只有用户明确存过「浅色」才用浅色
+const storedTheme = localStorage.getItem(STORAGE_KEY)
+const dark = ref(storedTheme ? storedTheme === 'dark' : true)
 const theme = computed(() => (dark.value ? darkTheme : null))
+
+// 海报网格/详情页 hero 是自绘区域，拿不到 naive-ui 的主题变量，
+// 靠这个 class 驱动 tokens.css 里的 --bg-canvas 等自定义变量切换
+watchEffect(() => {
+  document.documentElement.classList.toggle('dark', dark.value)
+})
 
 function toggleTheme() {
   dark.value = !dark.value

@@ -65,41 +65,47 @@ onUnmounted(() => {
 
     <n-spin v-else :show="loading">
       <template v-if="media">
-        <n-card size="small" class="header-card">
-          <div class="header-row">
-            <div
-              class="cover"
-              :style="{ background: `linear-gradient(155deg, ${MEDIA_TYPE_COLOR[media.media_type]}26, ${MEDIA_TYPE_COLOR[media.media_type]}0d)` }"
-            >
-              <img
-                v-if="media.poster_url && !posterBroken"
-                class="cover-img"
-                :src="media.poster_url"
-                :alt="media.title"
-                @error="posterBroken = true"
-              />
-              <n-icon v-else :size="40" :color="MEDIA_TYPE_COLOR[media.media_type]">
+        <!-- backdrop hero：拿海报模糊放大当背景，没有海报就退回按类型上色的渐变——
+             与列表页 PosterCard 的空图占位是同一套配色逻辑，风格统一 -->
+        <div
+          class="hero"
+          :style="
+            !media.poster_url || posterBroken
+              ? { background: `linear-gradient(155deg, ${MEDIA_TYPE_COLOR[media.media_type]}70, ${MEDIA_TYPE_COLOR[media.media_type]}20)` }
+              : {}
+          "
+        >
+          <img
+            v-if="media.poster_url && !posterBroken"
+            class="hero-bg"
+            :src="media.poster_url"
+            alt=""
+            @error="posterBroken = true"
+          />
+          <div class="hero-scrim" />
+          <div class="hero-content">
+            <div class="hero-poster">
+              <img v-if="media.poster_url && !posterBroken" :src="media.poster_url" :alt="media.title" />
+              <n-icon v-else :size="36" :color="MEDIA_TYPE_COLOR[media.media_type]">
                 <component :is="MEDIA_TYPE_ICON[media.media_type]" />
               </n-icon>
             </div>
-            <div class="header-info">
-              <n-h2 class="title">{{ media.title }}</n-h2>
-              <n-space :size="6" class="tags">
-                <n-tag :bordered="false">{{ MEDIA_TYPE_LABEL[media.media_type] }}</n-tag>
-                <n-tag v-if="media.year" :bordered="false" type="info">{{ media.year }}</n-tag>
-                <n-tag
-                  v-for="t in media.tags"
-                  :key="t.id"
-                  :bordered="false"
-                  size="small"
-                  type="success"
-                >
-                  {{ t.name }}
-                </n-tag>
-              </n-space>
+            <div class="hero-info">
+              <h1 class="hero-title">{{ media.title }}</h1>
+              <div class="hero-tags">
+                <span class="tag tag-type" :style="{ background: MEDIA_TYPE_COLOR[media.media_type] }">
+                  {{ MEDIA_TYPE_LABEL[media.media_type] }}
+                </span>
+                <span v-if="media.year" class="tag">{{ media.year }}</span>
+                <span v-for="t in media.tags" :key="t.id" class="tag">{{ t.name }}</span>
+              </div>
+              <div class="hero-summary">
+                {{ media.resource_count }} 条资源
+                <span v-if="media.valid_resource_count > 0">· {{ media.valid_resource_count }} 条可用</span>
+              </div>
             </div>
           </div>
-        </n-card>
+        </div>
 
         <n-card size="small" title="详情" class="mt">
           <n-descriptions bordered size="small" :column="2" label-placement="left">
@@ -145,38 +151,88 @@ onUnmounted(() => {
 .back {
   margin-bottom: 12px;
 }
-.header-card :deep(.n-card__content) {
-  padding-bottom: 4px;
-}
-.header-row {
+.hero {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  min-height: 280px;
   display: flex;
-  gap: 16px;
-  align-items: flex-start;
+  align-items: flex-end;
+  background-color: var(--poster-surface);
 }
-.cover {
+.hero-bg {
+  position: absolute;
+  inset: -24px;
+  width: calc(100% + 48px);
+  height: calc(100% + 48px);
+  object-fit: cover;
+  filter: blur(36px) brightness(0.85);
+  transform: scale(1.08);
+}
+.hero-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 0%, var(--scrim-soft) 45%, var(--scrim-strong) 100%);
+}
+.hero-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  padding: 24px;
+  color: #fff;
+}
+.hero-poster {
   flex: none;
-  width: 84px;
+  width: 110px;
   aspect-ratio: 2 / 3;
   border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  background: rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
 }
-.cover-img {
+.hero-poster img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.header-info {
+.hero-info {
   flex: 1;
   min-width: 0;
+  padding-bottom: 2px;
 }
-.title {
+.hero-title {
   margin: 0 0 10px;
+  font-size: 26px;
+  line-height: 1.3;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
 }
-.tags {
-  margin-bottom: 4px;
+.hero-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.tag {
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(4px);
+}
+.tag-type {
+  font-weight: 600;
+  color: #fff;
+}
+.hero-summary {
+  font-size: 13px;
+  opacity: 0.85;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 .mt {
   margin-top: 16px;
@@ -184,5 +240,18 @@ onUnmounted(() => {
 .count {
   font-size: 12px;
   font-weight: 400;
+}
+
+@media (max-width: 640px) {
+  .hero {
+    min-height: 0;
+  }
+  .hero-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .hero-poster {
+    width: 88px;
+  }
 }
 </style>

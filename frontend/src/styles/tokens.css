@@ -19,6 +19,21 @@
   --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12);
 
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* 海报网格、详情页 hero 这类不走 n-card 的自绘区域用，浅色默认值 */
+  --bg-canvas: #f2f3f6;
+  --scrim-strong: rgba(10, 10, 14, 0.82);
+  --scrim-soft: rgba(10, 10, 14, 0.32);
+  --poster-surface: rgba(17, 18, 23, 0.04);
+}
+
+/* 媒体站默认深色，这里独立于 naive-ui 的 theme-overrides 走一套自己的 class 开关，
+   因为海报网格/hero 渐变这些自绘区域不经过 naive-ui 组件，拿不到它的主题变量 */
+:root.dark {
+  --bg-canvas: #0b0c10;
+  --scrim-strong: rgba(0, 0, 0, 0.88);
+  --scrim-soft: rgba(0, 0, 0, 0.4);
+  --poster-surface: rgba(255, 255, 255, 0.06);
 }
 
 html,
@@ -38,6 +53,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  background: var(--bg-canvas);
+  transition: background 0.2s var(--ease);
 }
 
 /* 细滚动条，跟随系统深浅色，避免默认滚动条在深色主题下刺眼 */
