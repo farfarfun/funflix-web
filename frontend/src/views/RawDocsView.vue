@@ -10,6 +10,7 @@ import {
   fromNow,
   PARSE_STATUS_LABEL,
   PARSE_STATUS_TYPE,
+  shortId,
   SOURCE_TYPE_LABEL,
   toOptions,
 } from '@/utils/display'
@@ -37,7 +38,7 @@ const detail = ref<RawDocument | null>(null)
 const detailLoading = ref(false)
 const showDetail = ref(false)
 
-async function open(id: number) {
+async function open(id: string) {
   showDetail.value = true
   detailLoading.value = true
   detail.value = null
@@ -87,7 +88,7 @@ async function open(id: number) {
       <n-table v-else :single-line="false" size="small" class="mt">
         <thead>
           <tr>
-            <th style="width: 64px">#</th>
+            <th style="width: 84px">ID</th>
             <th style="width: 120px">来源类型</th>
             <th>来源名称</th>
             <th style="width: 100px">解析状态</th>
@@ -98,7 +99,7 @@ async function open(id: number) {
         </thead>
         <tbody>
           <tr v-for="d in items" :key="d.id">
-            <td>{{ d.id }}</td>
+            <td><n-text code style="font-size: 11px" :title="d.id">{{ shortId(d.id) }}</n-text></td>
             <td>{{ SOURCE_TYPE_LABEL[d.source_type] ?? d.source_type }}</td>
             <td>{{ d.source_name ?? '-' }}</td>
             <td>

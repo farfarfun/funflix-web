@@ -83,7 +83,7 @@ export interface MediaQuery extends Params {
 export const api = {
   // --- 作品 ---
   listMedia: (params: MediaQuery) => request<Page<MediaSummary>>('/media', { params }),
-  getMedia: (id: number) => request<MediaDetail>(`/media/${id}`),
+  getMedia: (id: string) => request<MediaDetail>(`/media/${id}`),
 
   // --- 资源 ---
   listResources: (params: Params) => request<Page<Resource>>('/resources', { params }),
@@ -96,15 +96,15 @@ export const api = {
   supportedSourceTypes: () => request<string[]>('/sources/supported'),
   createSource: (payload: Record<string, unknown>) =>
     request<Source>('/sources', { method: 'POST', body: JSON.stringify(payload) }),
-  updateSource: (id: number, payload: Record<string, unknown>) =>
+  updateSource: (id: string, payload: Record<string, unknown>) =>
     request<Source>(`/sources/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
-  deleteSource: (id: number) => request<void>(`/sources/${id}`, { method: 'DELETE' }),
-  collectSource: (id: number) =>
+  deleteSource: (id: string) => request<void>(`/sources/${id}`, { method: 'DELETE' }),
+  collectSource: (id: string) =>
     request<CollectReport>(`/sources/${id}/collect`, { method: 'POST' }),
 
   // --- 原始文本 ---
   listRaw: (params: Params) => request<Page<RawDocumentSummary>>('/raw', { params }),
-  getRaw: (id: number) => request<RawDocument>(`/raw/${id}`),
+  getRaw: (id: string) => request<RawDocument>(`/raw/${id}`),
   createRaw: (payload: Record<string, unknown>) =>
     request<unknown>('/raw', { method: 'POST', body: JSON.stringify(payload) }),
 }

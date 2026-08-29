@@ -175,6 +175,12 @@ export function formatTime(iso: string | null): string {
   return d.toLocaleString('zh-CN', { hour12: false })
 }
 
+/** UUID 太长，列表窄列里放不下完整值。UUIDv7 前 48 位是时间戳，同批入库的行
+ * 前几位几乎相同，取不到辨识度；末尾才是随机位，取末 8 位当短标识。 */
+export function shortId(id: string): string {
+  return id.slice(-8)
+}
+
 /** 相对时间，列表里比绝对时间好扫。 */
 export function fromNow(iso: string | null): string {
   if (!iso) return '-'

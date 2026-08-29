@@ -17,10 +17,12 @@ const error = ref<string | null>(null)
 const missing = ref(false)
 const posterBroken = ref(false)
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 async function load() {
-  const id = Number(route.params.id)
+  const id = String(route.params.id)
   pageHeading.value = null
-  if (!Number.isInteger(id)) {
+  if (!UUID_RE.test(id)) {
     error.value = '无效的作品 ID'
     return
   }

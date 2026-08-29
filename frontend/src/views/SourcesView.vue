@@ -7,7 +7,7 @@ import { hasAdminKey } from '@/api/auth'
 import { api } from '@/api/client'
 import type { CollectReport, Source, SourceType } from '@/api/types'
 import { usePagedList } from '@/composables/usePagedList'
-import { formatTime, fromNow, SOURCE_TYPE_LABEL, toOptions } from '@/utils/display'
+import { formatTime, fromNow, shortId, SOURCE_TYPE_LABEL, toOptions } from '@/utils/display'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -60,7 +60,7 @@ async function create() {
 }
 
 // --- 采集 ---
-const collecting = ref<number | null>(null)
+const collecting = ref<string | null>(null)
 
 function describe(r: CollectReport): string {
   return `拉取 ${r.fetched} 条，新增 ${r.created}，去重 ${r.duplicated}，无正文跳过 ${r.skipped_empty}`
@@ -183,7 +183,7 @@ onMounted(async () => {
       <n-table v-else :single-line="false" size="small">
         <thead>
           <tr>
-            <th style="width: 52px">#</th>
+            <th style="width: 84px">ID</th>
             <th style="width: 110px">类型</th>
             <th>标识</th>
             <th style="width: 90px">水位</th>
@@ -195,7 +195,7 @@ onMounted(async () => {
         </thead>
         <tbody>
           <tr v-for="s in items" :key="s.id">
-            <td>{{ s.id }}</td>
+            <td><n-text code style="font-size: 11px" :title="s.id">{{ shortId(s.id) }}</n-text></td>
             <td>{{ SOURCE_TYPE_LABEL[s.source_type] ?? s.source_type }}</td>
             <td>
               <n-button text tag="a" :href="s.url" target="_blank" rel="noopener noreferrer">

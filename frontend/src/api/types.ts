@@ -47,13 +47,13 @@ export type SourceType =
   | 'unknown'
 
 export interface Tag {
-  id: number
+  id: string
   kind: 'genre' | 'region' | 'language' | 'year' | 'other'
   name: string
 }
 
 export interface Resource {
-  id: number
+  id: string
   provider: Provider
   url: string
   passcode: string | null
@@ -69,7 +69,7 @@ export interface Resource {
 }
 
 export interface MediaSummary {
-  id: number
+  id: string
   title: string
   original_title: string | null
   media_type: MediaType
@@ -94,7 +94,7 @@ export interface MediaDetail extends MediaSummary {
 }
 
 export interface Source {
-  id: number
+  id: string
   source_type: SourceType
   url: string
   identifier: string
@@ -115,7 +115,7 @@ export interface Source {
 }
 
 export interface CollectReport {
-  source_id: number
+  source_id: string
   ok: boolean
   fetched: number
   created: number
@@ -129,7 +129,7 @@ export interface CollectReport {
 }
 
 export interface RawDocumentSummary {
-  id: number
+  id: string
   content_hash: string
   source_type: SourceType
   source_name: string | null
