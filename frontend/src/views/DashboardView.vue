@@ -5,7 +5,7 @@ import {
   CloudUploadOutline,
   DocumentTextOutline,
 } from '@vicons/ionicons5'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { api } from '@/api/client'
 import type { PipelineStats } from '@/api/types'
@@ -40,6 +40,25 @@ async function load() {
 
 onMounted(load)
 
+// --- 自动刷新：盯着采集/校验进度时手动点刷新很烦，给个可关的轮询 ---
+const AUTO_REFRESH_MS = 30_000
+const autoRefresh = ref(false)
+let timer: ReturnType<typeof setInterval> | undefined
+
+function stopAutoRefresh() {
+  if (timer !== undefined) {
+    clearInterval(timer)
+    timer = undefined
+  }
+}
+
+watch(autoRefresh, (on) => {
+  stopAutoRefresh()
+  if (on) timer = setInterval(load, AUTO_REFRESH_MS)
+})
+
+onUnmounted(stopAutoRefresh)
+
 /** 把 {键: 数量} 变成按数量倒序的行，顺带把英文字面值翻成中文。 */
 function rows(
   counts: Record<string, number> | undefined,
@@ -65,7 +84,12 @@ const validRate = computed(() => {
   <div class="page">
     <n-space align="center" justify="space-between" class="head">
       <n-h2 class="title">流水线大盘</n-h2>
-      <n-button size="small" :loading="loading" @click="load">刷新</n-button>
+      <n-space align="center" :size="12">
+        <n-checkbox v-model:checked="autoRefresh">
+          自动刷新（{{ AUTO_REFRESH_MS / 1000 }}s）
+        </n-checkbox>
+        <n-button size="small" :loading="loading" @click="load">刷新</n-button>
+      </n-space>
     </n-space>
 
     <n-alert v-if="error" type="error">{{ error }}</n-alert>

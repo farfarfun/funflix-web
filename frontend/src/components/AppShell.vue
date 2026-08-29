@@ -5,6 +5,7 @@ import {
   CloudUploadOutline,
   DocumentTextOutline,
   KeyOutline,
+  MenuOutline,
   MoonOutline,
   SearchOutline,
   SpeedometerOutline,
@@ -13,7 +14,7 @@ import {
 import type { MenuOption } from 'naive-ui'
 import { NIcon } from 'naive-ui'
 import type { Component } from 'vue'
-import { computed, h, ref } from 'vue'
+import { computed, h, ref, watch } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
 import { adminKey, hasAdminKey, setAdminKey } from '@/api/auth'
@@ -23,6 +24,9 @@ defineProps<{ dark: boolean }>()
 defineEmits<{ toggleTheme: [] }>()
 
 const route = useRoute()
+
+// --- 移动端侧边栏：窄屏下 212px 固定侧栏会把内容区挤没，改成汉堡按钮开抽屉 ---
+const mobileMenuOpen = ref(false)
 
 // --- 管理密钥 ---
 const showKey = ref(false)
@@ -99,11 +103,19 @@ const breadcrumb = computed(() => {
   }
   return { group: '', label: (route.meta.title as string | undefined) ?? '' }
 })
+
+// 切页面后抽屉里的旧菜单还开着会挡住新页面，导航一发生就收起
+watch(
+  () => route.fullPath,
+  () => {
+    mobileMenuOpen.value = false
+  },
+)
 </script>
 
 <template>
   <n-layout has-sider position="absolute">
-    <n-layout-sider bordered :width="212" content-style="display:flex;flex-direction:column">
+    <n-layout-sider bordered :width="212" class="sider" content-style="display:flex;flex-direction:column">
       <div class="brand">
         <div class="brand-mark">F</div>
         <div class="brand-text">
@@ -117,6 +129,9 @@ const breadcrumb = computed(() => {
     <n-layout-content content-style="padding:0" :native-scrollbar="false">
       <div class="topbar" :style="{ background: dark ? 'rgba(24, 24, 28, 0.86)' : 'rgba(255, 255, 255, 0.86)' }">
         <div class="crumb">
+          <n-button quaternary circle size="small" class="hamburger" @click="mobileMenuOpen = true">
+            <n-icon size="18"><MenuOutline /></n-icon>
+          </n-button>
           <span v-if="breadcrumb.group" class="crumb-group">{{ breadcrumb.group }}</span>
           <span v-if="breadcrumb.group" class="crumb-sep">/</span>
           <span class="crumb-label">{{ breadcrumb.label }}</span>
@@ -189,6 +204,12 @@ const breadcrumb = computed(() => {
         </n-space>
       </template>
     </n-modal>
+
+    <n-drawer v-model:show="mobileMenuOpen" placement="left" :width="240" class="mobile-drawer">
+      <n-drawer-content title="funflix" closable :native-scrollbar="false">
+        <n-menu :value="activeKey" :options="menuOptions" :indent="16" />
+      </n-drawer-content>
+    </n-drawer>
   </n-layout>
 </template>
 
@@ -248,6 +269,23 @@ const breadcrumb = computed(() => {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+.hamburger {
+  display: none;
+  margin-right: 4px;
+}
+
+/* 窄屏：212px 固定侧栏会把内容区挤没，收起来改走抽屉 */
+@media (max-width: 768px) {
+  .sider {
+    display: none;
+  }
+  .hamburger {
+    display: inline-flex;
+  }
+  .content {
+    padding: 16px;
+  }
 }
 .crumb-group {
   opacity: 0.5;

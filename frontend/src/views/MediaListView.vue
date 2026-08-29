@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { SearchOutline } from '@vicons/ionicons5'
-import { nextTick, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { hasAdminKey } from '@/api/auth'
 import { api } from '@/api/client'
 import type { MediaType } from '@/api/types'
 import { usePagedList } from '@/composables/usePagedList'
 import { MEDIA_TYPE_COLOR, MEDIA_TYPE_ICON, MEDIA_TYPE_LABEL, toOptions } from '@/utils/display'
+
+/** 首屏骨架屏的卡片数：够铺满一屏又不会渲染太多占位节点。 */
+const SKELETON_COUNT = 12
 
 const route = useRoute()
 const router = useRouter()
@@ -84,16 +88,26 @@ function writeToUrl() {
 
 let timer: ReturnType<typeof setTimeout> | undefined
 
+/** 防抖计时期间为 true：敲字时给个反馈，不然用户会以为没反应而重复操作。 */
+const debouncing = ref(false)
+
 /** 改了筛选条件：回到第一页，写地址栏，重新取数。 */
 function applyFilters(delay: number) {
   if (applyingFromUrl) return
   clearTimeout(timer)
+  if (delay > 0) debouncing.value = true
   timer = setTimeout(() => {
+    debouncing.value = false
     page.value = 1
     writeToUrl()
     reload()
   }, delay)
 }
+
+/** 是否有任何筛选条件在生效，用来区分「搜不到」与「库里本来就没数据」两种空状态。 */
+const hasActiveFilters = computed(
+  () => keyword.value.trim() !== '' || mediaType.value !== null || year.value !== null || validOnly.value,
+)
 
 // 输入框按键触发，要防抖；下拉与勾选是离散动作，立即生效
 watch([keyword, year], () => applyFilters(300))
@@ -136,6 +150,7 @@ onMounted(() => {
           style="width: 280px"
         >
           <template #prefix><n-icon :depth="3"><SearchOutline /></n-icon></template>
+          <template v-if="debouncing" #suffix><n-spin :size="14" /></template>
         </n-input>
         <n-select
           v-model:value="mediaType"
@@ -160,10 +175,25 @@ onMounted(() => {
 
     <n-alert v-if="error" type="error" class="mt">{{ error }}</n-alert>
 
-    <n-spin :show="loading">
-      <n-empty v-if="!loading && items.length === 0" description="没有匹配的作品" class="mt-lg">
-        <template #extra>
-          <n-text depth="3">库里还没有数据时，先到「采集源」登记一个频道并采集，再跑解析。</n-text>
+    <!-- 首屏（还没有任何数据可显示）用骨架屏，比整页转圈更快出内容感；
+         换页/改筛选时列表里已经有旧数据，走下面的 n-spin 蒙层就够了 -->
+    <div v-if="loading && items.length === 0 && !error" class="grid mt">
+      <n-card v-for="i in SKELETON_COUNT" :key="i" size="small" class="card">
+        <n-skeleton class="cover" style="width: 100%" :sharp="false" />
+        <n-skeleton text style="margin-top: 10px; width: 90%" />
+        <n-skeleton text style="width: 50%" />
+        <n-skeleton text style="margin-top: 10px; width: 40%" />
+      </n-card>
+    </div>
+
+    <n-spin v-else :show="loading">
+      <n-empty
+        v-if="!loading && items.length === 0"
+        :description="hasActiveFilters ? '没有匹配的作品，换个关键词或筛选条件试试' : '库里还没有作品'"
+        class="mt-lg"
+      >
+        <template v-if="hasAdminKey && !hasActiveFilters" #extra>
+          <n-text depth="3">去「采集源」登记一个频道并采集，再跑解析即可入库。</n-text>
         </template>
       </n-empty>
 
