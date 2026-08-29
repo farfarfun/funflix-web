@@ -61,6 +61,10 @@ service_command_for() {
   local env="$1" mode="$2" port
   port="$(port_for "${env}")"
 
+  # 未显式设置时给个默认管理密钥，省得每次起服务都要记着导出。
+  # 对外暴露（FUNFLIX_WEB_HOST=0.0.0.0）时务必自己覆盖这个值。
+  export FUNFLIX_ADMIN_API_KEY="${FUNFLIX_ADMIN_API_KEY:-admin123}"
+
   case "${env}" in
   dev)
     [[ -x "${DEV_BIN}" ]] || die "缺少开发环境：${DEV_BIN} 不存在，先执行 uv pip install -e '.[dev]'"
