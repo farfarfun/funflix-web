@@ -7,7 +7,7 @@ import { api, ApiError } from '@/api/client'
 import type { MediaDetail } from '@/api/types'
 import ResourceTable from '@/components/ResourceTable.vue'
 import { pageHeading } from '@/composables/usePageHeading'
-import { formatTime, MEDIA_TYPE_COLOR, MEDIA_TYPE_LABEL } from '@/utils/display'
+import { formatTime, MEDIA_TYPE_COLOR, MEDIA_TYPE_ICON, MEDIA_TYPE_LABEL } from '@/utils/display'
 
 const route = useRoute()
 
@@ -15,6 +15,7 @@ const media = ref<MediaDetail | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const missing = ref(false)
+const posterBroken = ref(false)
 
 async function load() {
   const id = Number(route.params.id)
@@ -26,6 +27,7 @@ async function load() {
   loading.value = true
   error.value = null
   missing.value = false
+  posterBroken.value = false
   try {
     media.value = await api.getMedia(id)
     pageHeading.value = media.value.title
@@ -63,25 +65,40 @@ onUnmounted(() => {
 
     <n-spin v-else :show="loading">
       <template v-if="media">
-        <n-card
-          size="small"
-          class="header-card"
-          :style="{ borderLeft: `3px solid ${MEDIA_TYPE_COLOR[media.media_type]}` }"
-        >
-          <n-h2 class="title">{{ media.title }}</n-h2>
-          <n-space :size="6" class="tags">
-            <n-tag :bordered="false">{{ MEDIA_TYPE_LABEL[media.media_type] }}</n-tag>
-            <n-tag v-if="media.year" :bordered="false" type="info">{{ media.year }}</n-tag>
-            <n-tag
-              v-for="t in media.tags"
-              :key="t.id"
-              :bordered="false"
-              size="small"
-              type="success"
+        <n-card size="small" class="header-card">
+          <div class="header-row">
+            <div
+              class="cover"
+              :style="{ background: `linear-gradient(155deg, ${MEDIA_TYPE_COLOR[media.media_type]}26, ${MEDIA_TYPE_COLOR[media.media_type]}0d)` }"
             >
-              {{ t.name }}
-            </n-tag>
-          </n-space>
+              <img
+                v-if="media.poster_url && !posterBroken"
+                class="cover-img"
+                :src="media.poster_url"
+                :alt="media.title"
+                @error="posterBroken = true"
+              />
+              <n-icon v-else :size="40" :color="MEDIA_TYPE_COLOR[media.media_type]">
+                <component :is="MEDIA_TYPE_ICON[media.media_type]" />
+              </n-icon>
+            </div>
+            <div class="header-info">
+              <n-h2 class="title">{{ media.title }}</n-h2>
+              <n-space :size="6" class="tags">
+                <n-tag :bordered="false">{{ MEDIA_TYPE_LABEL[media.media_type] }}</n-tag>
+                <n-tag v-if="media.year" :bordered="false" type="info">{{ media.year }}</n-tag>
+                <n-tag
+                  v-for="t in media.tags"
+                  :key="t.id"
+                  :bordered="false"
+                  size="small"
+                  type="success"
+                >
+                  {{ t.name }}
+                </n-tag>
+              </n-space>
+            </div>
+          </div>
         </n-card>
 
         <n-card size="small" title="详情" class="mt">
@@ -130,6 +147,30 @@ onUnmounted(() => {
 }
 .header-card :deep(.n-card__content) {
   padding-bottom: 4px;
+}
+.header-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.cover {
+  flex: none;
+  width: 84px;
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.header-info {
+  flex: 1;
+  min-width: 0;
 }
 .title {
   margin: 0 0 10px;

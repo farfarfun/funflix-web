@@ -6,7 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/api/client'
 import type { MediaType } from '@/api/types'
 import { usePagedList } from '@/composables/usePagedList'
-import { MEDIA_TYPE_COLOR, MEDIA_TYPE_LABEL, toOptions } from '@/utils/display'
+import { MEDIA_TYPE_COLOR, MEDIA_TYPE_ICON, MEDIA_TYPE_LABEL, toOptions } from '@/utils/display'
 
 const route = useRoute()
 const router = useRouter()
@@ -31,6 +31,12 @@ const { items, total, page, size, loading, error, refresh, goto, reload } = useP
 )
 
 const typeOptions = toOptions(MEDIA_TYPE_LABEL)
+
+// 封面图挂了（链接失效、跨域）就退回图标占位，别留一个破图标在格子里。
+const brokenPosters = ref(new Set<number>())
+function onPosterError(id: number) {
+  brokenPosters.value.add(id)
+}
 
 // --- 筛选条件与地址栏同步 ---------------------------------------------------
 // 不同步的话：点进详情再返回，筛选和页码全丢；搜索结果也没法发给别人。
@@ -168,9 +174,24 @@ onMounted(() => {
           size="small"
           hoverable
           class="card"
-          :style="{ borderLeft: `3px solid ${MEDIA_TYPE_COLOR[item.media_type]}` }"
           @click="$router.push({ name: 'media-detail', params: { id: item.id } })"
         >
+          <div
+            class="cover"
+            :style="{ background: `linear-gradient(155deg, ${MEDIA_TYPE_COLOR[item.media_type]}26, ${MEDIA_TYPE_COLOR[item.media_type]}0d)` }"
+          >
+            <img
+              v-if="item.poster_url && !brokenPosters.has(item.id)"
+              class="cover-img"
+              :src="item.poster_url"
+              :alt="item.title"
+              loading="lazy"
+              @error="onPosterError(item.id)"
+            />
+            <n-icon v-else :size="34" :color="MEDIA_TYPE_COLOR[item.media_type]">
+              <component :is="MEDIA_TYPE_ICON[item.media_type]" />
+            </n-icon>
+          </div>
           <div class="card-title" :title="item.title">{{ item.title }}</div>
           <n-space :size="4" class="mt-xs">
             <n-tag size="small" :bordered="false">{{ MEDIA_TYPE_LABEL[item.media_type] }}</n-tag>
@@ -226,11 +247,29 @@ onMounted(() => {
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
+.cover {
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
 .card-title {
   font-weight: 600;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-height: 2.6em;
+  line-height: 1.3;
 }
 .card-meta {
   margin-top: 10px;

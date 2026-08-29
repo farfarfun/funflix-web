@@ -1,5 +1,15 @@
 /** 枚举的中文标签与配色。后端返回的是英文字面值，展示层统一在这里翻译。 */
 
+import {
+  EarthOutline,
+  FilmOutline,
+  HelpCircleOutline,
+  MicOutline,
+  SparklesOutline,
+  TvOutline,
+} from '@vicons/ionicons5'
+import type { Component } from 'vue'
+
 import type { CheckStatus, MediaType, ParseStatus, Provider, Quality, SourceType } from '@/api/types'
 
 type NTagType = 'default' | 'success' | 'info' | 'warning' | 'error'
@@ -21,6 +31,16 @@ export const MEDIA_TYPE_COLOR: Record<MediaType, string> = {
   variety: '#d68f00',
   documentary: '#18a058',
   unknown: '#9095a3',
+}
+
+/** 没有封面图时，卡片/详情页拿它顶上去——总比空白或一格纯色好认。 */
+export const MEDIA_TYPE_ICON: Record<MediaType, Component> = {
+  movie: FilmOutline,
+  tv: TvOutline,
+  anime: SparklesOutline,
+  variety: MicOutline,
+  documentary: EarthOutline,
+  unknown: HelpCircleOutline,
 }
 
 export const PROVIDER_LABEL: Record<Provider, string> = {
