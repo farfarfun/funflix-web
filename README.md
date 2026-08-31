@@ -79,6 +79,28 @@ worker 独立成进程而不是打开 `FUNFLIX_WORKER_ENABLED`，理由在 funfl
 进程内 worker 在 uvicorn 多进程部署下每个进程都会起一份，租约虽能防重复处理，
 但会多出几倍空转轮询。
 
+## 本地安装（发布前验证，不走私有仓库）
+
+`pnpm dev` 的热重载不能证明代码真的可打包、可全局安装——想验证这一点，用：
+
+```bash
+funbuild install
+```
+
+它会：装依赖 → `pnpm build` → 打成 tgz → `npm install -g` 装这个 tgz → 删掉 tgz。
+装出来是一份真实的全局 CLI（`npm ls -g funflix-web` 看不到软链指回本仓库），
+跟 `npm i -g funflix-web` 装发布版是同一种形态，只是包来自本地构建而不是私有 npm 仓库。
+装完直接用 `funflix-web server status` 验证。
+
+没有 `funbuild` 就手动走同样的步骤：
+
+```bash
+pnpm install && pnpm build
+npm pack
+npm install -g ./funflix-web-*.tgz   # 不要用 npm install -g .——那会装成软链指回本仓库，
+                                      # 绕开 package.json 的 files 字段，验证不出真实发布产物
+```
+
 ## funflix-web 命令
 
 命令分两组：`server` 管运行时生命周期，顶层命令管 CLI 自身的包版本。
