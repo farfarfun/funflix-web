@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "funflix-web"
-version = "0.1.4"
+version = "0.1.5"
 description = "funflix 的 Web 界面：单进程同时提供后端接口与前端界面"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -15,7 +15,12 @@ classifiers = [
 ]
 dependencies = [
     # 0.1.31 起主键/外键改为 UUIDv7，前端按 UUID 字符串处理 id，不兼容更早版本的自增整数 id
-    "funflix>=0.1.31",
+    # 0.1.33 起支持本地库同步（`funflix sync pull`/`sync push`），见 scripts/services/sync.sh
+    # 与 README「本地库模式」——web/worker 默认仍直连云端库，本地库模式是可选项，需要
+    # 显式设置 FUNFLIX_DATABASE_URL 才会启用；0.1.33 的 sync pull 有个致命 bug——DBAPIError
+    # 一律误判成"业务唯一键冲突"并静默跳过整表（见 https://github.com/farfarfun/funflix/issues/3），
+    # 0.1.34 修好，下限定在这
+    "funflix>=0.1.34",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "typer>=0.12",

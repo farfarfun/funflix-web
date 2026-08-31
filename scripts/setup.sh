@@ -17,7 +17,7 @@ readonly ROOT SERVICE_DIR RELEASE_SCRIPT DEV_SCRIPT
 readonly -a SERVICE_ACTIONS=(start stop restart run status)
 readonly -a RELEASE_ACTIONS=(publish install)
 readonly -a DEV_ACTIONS=(bootstrap build migrate test lint clean)
-readonly -a SERVICES=(web worker)
+readonly -a SERVICES=(web worker sync)
 
 # 刻意不提供 all：目前没有必须批量操作的场景，而一个语义含糊的 all
 # （顺序？失败了继续还是中止？）比没有它更糟。真需要时再显式加。
@@ -35,8 +35,8 @@ funflix-web 统一入口。
   scripts/setup.sh clean                清掉构建产物与 .run/
 
 服务：
-  scripts/setup.sh <start|stop|restart|run> <web|worker> <dev|prod>
-  scripts/setup.sh status [web|worker]
+  scripts/setup.sh <start|stop|restart|run> <web|worker|sync> <dev|prod>
+  scripts/setup.sh status [web|worker|sync]
 
 发布：
   scripts/setup.sh publish              构建前端 + funbuild 发布正式包
@@ -83,6 +83,7 @@ service_script_for() {
   case "$1" in
   web) printf '%s\n' "${SERVICE_DIR}/web.sh" ;;
   worker) printf '%s\n' "${SERVICE_DIR}/worker.sh" ;;
+  sync) printf '%s\n' "${SERVICE_DIR}/sync.sh" ;;
   *) return 1 ;;
   esac
 }

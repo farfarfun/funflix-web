@@ -65,6 +65,10 @@ service_command_for() {
   # 对外暴露（FUNFLIX_WEB_HOST=0.0.0.0）时务必自己覆盖这个值。
   export FUNFLIX_ADMIN_API_KEY="${FUNFLIX_ADMIN_API_KEY:-admin123}"
 
+  # 默认直连云端库（不设 FUNFLIX_DATABASE_URL，funflix 自己落回 funsecret 拿到远端
+  # 地址）。本地库模式是可选项，见 README「本地库模式」——要用的话手动导出
+  # FUNFLIX_DATABASE_URL="${LOCAL_DATABASE_URL}" 再起服务，这里不替你默认选。
+
   case "${env}" in
   dev)
     [[ -x "${DEV_BIN}" ]] || die "缺少开发环境：${DEV_BIN} 不存在，先执行 uv pip install -e '.[dev]'"

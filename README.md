@@ -32,7 +32,9 @@
 ## 快速开始
 
 本仓库**完全不依赖 funflix 的源码检出**，funflix 按版本号从 PyPI 安装（见
-`pyproject.toml` 的 `funflix>=0.1.6`：0.1.4 起才有查询接口，0.1.6 起迁移随包发布）。
+`pyproject.toml` 的 `funflix>=0.1.34`：主键/外键为 UUIDv7，且带本地库同步
+`sync pull`/`sync push`，见下方「本地库模式」。0.1.33 的 sync pull 有个致命
+bug 会把真实错误误判成"唯一键冲突"并静默丢光整表数据，0.1.34 修好）。
 
 ```bash
 scripts/setup.sh bootstrap        # 装 Python 与前端依赖
@@ -71,12 +73,13 @@ scripts/setup.sh install [版本号]          # 按精确版本装到 .run/prod-
 脚本分工：`setup.sh` 只做解析与分发，`dev.sh` 管本地任务，`release.sh` 管发布与安装，
 `services/*.sh` 各自持有端口与启动命令，`lib/service.sh` 放共享的 PID / 锁 / 优雅停止。
 
-两个长期运行的服务：
+三个长期运行的服务：
 
 | 服务 | 内容 | 端口 |
 | --- | --- | --- |
 | `web` | uvicorn，同时提供 `/api` 与 `/web` | 8810 |
 | `worker` | `funflix worker`，采集 / 解析 / 校验 | 无 |
+| `sync` | 周期性 `funflix sync pull` + `sync push`，见下方「本地库模式」 | 无 |
 
 worker 独立成进程而不是打开 `FUNFLIX_WORKER_ENABLED`，理由在 funflix 的配置注释里：
 进程内 worker 在 uvicorn 多进程部署下每个进程都会起一份，租约虽能防重复处理，
@@ -146,9 +149,40 @@ FUNFLIX_ADMIN_API_KEY=你的密钥 funflix-web serve
 
 | 变量 | 说明 |
 | --- | --- |
-| `FUNFLIX_DATABASE_URL` | 数据库地址，默认本地 SQLite |
+| `FUNFLIX_DATABASE_URL` | 数据库地址；不设时 `web`/`worker` 直连云端（funflix 落回 funsecret 拿到远端地址）。显式设成本地 SQLite 路径可切到「本地库模式」，见下 |
+| `FUNFLIX_REMOTE_DATABASE_URL` | `sync` 同步的远端地址；不设时落回 funsecret 拿到真实远端库 |
+| `FUNFLIX_SYNC_INTERVAL_SECONDS` | `sync` 服务两轮 pull+push 之间的间隔，默认 `300` |
 | `FUNFLIX_ADMIN_API_KEY` | 写接口的密钥，不配则写接口全部 403 |
 | `FUNFLIX_WORKER_ENABLED` | 是否在本进程内跑后台 worker，默认 `false` |
+
+## 本地库模式（可选）
+
+`web`/`worker` 默认直连云端 Postgres，跟一直以来的行为一样。想改成查询一份
+本地 SQLite 镜像（省掉每次请求跨网络打远端；`worker` 逐行读写的采集/解析/
+校验 pipeline、`web` 上「立即采集」同步触发的写库，是这个模式最该省的场景），
+需要显式给 `web`/`worker` 设置：
+
+```bash
+export FUNFLIX_DATABASE_URL="sqlite+aiosqlite:///${HOME}/.cache/farfarfun/funflix/funflix.db"
+```
+
+（这个路径也是 `scripts/lib/db.sh` 里 `LOCAL_DATABASE_URL` 的值，与 funflix
+自身在 funsecret 未配置时的兜底路径一致。）再配合新增的 `sync` 服务负责两边
+同步（`funflix sync pull` 拉远端新数据覆盖本地，`funflix sync push` 把本地
+写操作推回远端，冲突按最后写入为准），间隔由 `FUNFLIX_SYNC_INTERVAL_SECONDS`
+控制：
+
+```bash
+scripts/setup.sh start sync dev
+```
+
+同步范围由 funflix 按表结构自动推导，**不含**破坏性/整表重写操作
+（`db reset`、`db retag`、删除采集源等）——这些必须直接对远端执行，
+分支合并式的同步没法安全覆盖它们，遵循 funflix 自己文档里的约束。
+
+> funflix 0.1.33 的 `sync pull` 有个致命 bug：把非唯一键冲突的真实错误一律
+> 误判成「业务唯一键冲突」并静默跳过整表（[issue #3](https://github.com/farfarfun/funflix/issues/3)），
+> 0.1.34 修好。用本地库模式前确认 funflix 版本 ≥ 0.1.34。
 
 ## 为什么端口固定 8810
 
