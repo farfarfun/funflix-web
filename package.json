@@ -1,8 +1,9 @@
 {
   "name": "funflix-web",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "funflix 的 Web 界面：静态托管 + 反代后端接口，start/stop/restart/status 一个命令搞定",
   "type": "module",
+  "packageManager": "pnpm@12.1.0",
   "bin": {
     "funflix-web": "bin/cli.js"
   },
@@ -13,9 +14,6 @@
   ],
   "publishConfig": {
     "registry": "https://packages.aliyun.com/5fc5eb115dbd287006145e5f/npm/funnpm/"
-  },
-  "funbuild": {
-    "publish": "npm publish"
   },
   "scripts": {
     "dev": "vite",
