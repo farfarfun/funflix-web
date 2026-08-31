@@ -56,7 +56,7 @@ FUNFLIX_ADMIN_API_KEY=你的密钥 funflix-web server start --backend http://127
 
 ```bash
 funflix server start --host 127.0.0.1 --port 18810    # 终端 A：后端
-cd frontend && pnpm dev                        # 终端 B：5173，/api 代理到 18810
+pnpm dev                                               # 终端 B：5173，/api 代理到 18810
 ```
 
 开发时访问 `http://127.0.0.1:5173`（不是 8810）。`vite.config.ts` 把 `/api`
@@ -127,7 +127,7 @@ funflix server start --host 127.0.0.1 --port 18810 &
 funflix-web server start --backend http://127.0.0.1:18810
 ```
 
-`funflix-web` 发布到私有 npm 仓库（`frontend/package.json` 的 `publishConfig.registry`），
+`funflix-web` 发布到私有 npm 仓库（`package.json` 的 `publishConfig.registry`），
 不再发布到公开 PyPI——之前发布过的 0.1.4~0.1.6 是历史遗留的 Python 包，仍留在公开 PyPI
 上不动，只是不会再有新版本。
 

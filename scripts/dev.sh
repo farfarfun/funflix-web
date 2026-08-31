@@ -4,18 +4,17 @@
 # 与 release.sh 的分工：那边管「发出去和装回来」，这边管「在本地把东西做出来」。
 # 两边都不属于任何单个服务，所以都不放在 scripts/services/ 下。
 #
-# 本仓库不再包含 Python 源码——前端（funflix-web）是独立 npm 包，后端直接用
-# funflix 自己的命令。这里的 .venv 只服务于 worker/sync 两个仍由本仓库管理的
+# 本仓库根目录本身就是前端（funflix-web）这个 npm 包；后端直接用 funflix
+# 自己的命令。这里的 .venv 只服务于 worker/sync 两个仍由本仓库管理的
 # bash 生命周期服务，装的是 funflix 本身，不是本仓库的代码。
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-FRONTEND_DIR="${ROOT}/frontend"
-STATIC_DIR="${FRONTEND_DIR}/dist"
+STATIC_DIR="${ROOT}/dist"
 VENV="${ROOT}/.venv"
 
-readonly SCRIPT_DIR ROOT FRONTEND_DIR STATIC_DIR VENV
+readonly SCRIPT_DIR ROOT STATIC_DIR VENV
 
 die() {
   printf 'error: %s\n' "$*" >&2
@@ -38,14 +37,14 @@ do_bootstrap() {
   (cd "${ROOT}" && uv venv && uv pip install funflix)
 
   info "安装前端依赖"
-  (cd "${FRONTEND_DIR}" && pnpm install)
+  (cd "${ROOT}" && pnpm install)
 
   cat <<EOF
 
 开发环境就绪。接下来：
     scripts/setup.sh build              构建前端
     scripts/setup.sh start worker dev   起 worker
-    cd frontend && pnpm dev             起前端（热重载，代理到本地 funflix server start）
+    pnpm dev                            起前端（热重载，代理到本地 funflix server start）
 
 funflix 从 PyPI 按版本安装，不需要同级目录下的 funflix 检出。
 EOF
@@ -58,7 +57,7 @@ do_build() {
   info "构建前端"
   # 用 --frozen-lockfile：构建产物要可复现，锁文件与 package.json 不一致时
   # 应该报错让人去解决，而不是悄悄改依赖再构建
-  (cd "${FRONTEND_DIR}" && pnpm install --frozen-lockfile && pnpm build)
+  (cd "${ROOT}" && pnpm install --frozen-lockfile && pnpm build)
   [[ -f "${STATIC_DIR}/index.html" ]] ||
     die "构建结束但没有产出 ${STATIC_DIR}/index.html"
   info "产物已写入 ${STATIC_DIR}"
@@ -68,7 +67,7 @@ do_build() {
 
 do_lint() {
   info "前端类型检查"
-  (cd "${FRONTEND_DIR}" && pnpm exec vue-tsc --noEmit)
+  (cd "${ROOT}" && pnpm exec vue-tsc --noEmit)
 
   info "shell 语法"
   local f

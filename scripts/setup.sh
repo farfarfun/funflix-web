@@ -28,7 +28,7 @@ funflix-web 统一入口。
 
 开发：
   scripts/setup.sh bootstrap            装 funflix（worker/sync 用）与前端依赖
-  scripts/setup.sh build                构建前端 npm 包（frontend/dist）
+  scripts/setup.sh build                构建前端 npm 包（dist/）
   scripts/setup.sh migrate [dev|prod]   建库 / 执行数据库迁移
   scripts/setup.sh lint                 vue-tsc + shell 语法
   scripts/setup.sh clean                清掉构建产物与 .run/
@@ -42,8 +42,8 @@ funflix-web 统一入口。
   scripts/setup.sh install <funflix版本> 按精确版本把 funflix 装到 .run/prod-venv
 
 说明：
-  前端（funflix-web，Web 界面 + 反代）已拆成独立 npm 包，不再由本脚本管理进程，
-  见 frontend/README.md：`npm i -g funflix-web && funflix-web start`。
+  前端（funflix-web，Web 界面 + 反代）是独立发布的 npm 包，不再由本脚本管理进程，
+  见 README.md：`npm i -g funflix-web && funflix-web server start`。
   后端接口是 funflix 自带的 `funflix server start`，同样不需要本仓库包装，直接运行即可。
 
   start    后台启动，PID 与日志写在 .run/

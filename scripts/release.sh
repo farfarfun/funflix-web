@@ -5,18 +5,18 @@
 #   publish  构建前端并发布 funflix-web 这个 npm 包到私有仓库
 #   install  给 worker/sync 两个 bash 生命周期服务装 funflix 本身（精确版本）
 #
-# 前端（funflix-web）已经不是本仓库的产出物之一了——它是独立的 npm 包，
-# 用户自己 `npm i -g funflix-web` 装、`funflix-web start` 起，不走这里的 install。
+# 前端（funflix-web）已经不是本仓库的产出物之一了——本仓库根目录本身就是它的
+# npm 包源码；用户自己 `npm i -g funflix-web` 装、`funflix-web server start`
+# 起，不走这里的 install。
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 RUN_DIR="${ROOT}/.run"
 PROD_VENV="${RUN_DIR}/prod-venv"
-FRONTEND_DIR="${ROOT}/frontend"
 FUNFLIX_PACKAGE_NAME="funflix"
 
-readonly SCRIPT_DIR ROOT RUN_DIR PROD_VENV FRONTEND_DIR FUNFLIX_PACKAGE_NAME
+readonly SCRIPT_DIR ROOT RUN_DIR PROD_VENV FUNFLIX_PACKAGE_NAME
 
 die() {
   printf 'error: %s\n' "$*" >&2
@@ -30,25 +30,20 @@ require() {
 }
 
 frontend_version() {
-  node -p "require('${FRONTEND_DIR}/package.json').version"
+  node -p "require('${ROOT}/package.json').version"
 }
 
 # --- publish（前端 npm 包）---------------------------------------------------
 
 do_publish() {
-  require pnpm "安装：npm i -g pnpm"
-  require npm "npm 随 Node.js 一起安装"
+  require funbuild "安装：uv tool install funbuild 或 pip install funbuild"
+
+  # funbuild build：清理旧产物 -> 装依赖 -> 构建 -> 本地装一份自检 -> npm publish
+  # -> 清理 -> commit+push -> tag，一条命令走完，不再手写 pnpm/npm 那一串。
+  (cd "${ROOT}" && funbuild build)
 
   local version
   version="$(frontend_version)"
-
-  info "构建前端"
-  (cd "${FRONTEND_DIR}" && pnpm install --frozen-lockfile && pnpm build)
-  [[ -f "${FRONTEND_DIR}/dist/index.html" ]] ||
-    die "构建结束但没有产出 ${FRONTEND_DIR}/dist/index.html"
-
-  info "发布 funflix-web(npm) ${version} 到私有仓库"
-  (cd "${FRONTEND_DIR}" && npm publish)
 
   cat <<EOF
 
@@ -56,7 +51,7 @@ do_publish() {
 下一步：
     npm i -g funflix-web
     funflix server start --host 127.0.0.1 --port 18810 &
-    funflix-web start --backend http://127.0.0.1:18810
+    funflix-web server start --backend http://127.0.0.1:18810
 EOF
 }
 

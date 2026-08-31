@@ -35,8 +35,8 @@ const MIME_TYPES = {
 
 export const BUILD_HINT =
   '前端尚未构建。请先执行：\n' +
-  '    cd frontend && pnpm install && pnpm build\n' +
-  '构建产物会写入 frontend/dist/，之后重启服务即可。'
+  '    pnpm install && pnpm build\n' +
+  '构建产物会写入 dist/，之后重启服务即可。'
 
 export async function frontendReady(staticDir) {
   try {
@@ -111,7 +111,7 @@ function sendFile(res, req, filePath, size, cacheControl) {
   })
 }
 
-// webPrefix 例如 '/web'；staticDir 是 frontend/dist 的绝对路径。
+// webPrefix 例如 '/web'；staticDir 是 dist/ 的绝对路径。
 export function createStaticHandler(staticDir, webPrefix) {
   return async function handleStatic(req, res) {
     if (!(await frontendReady(staticDir))) {
