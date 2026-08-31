@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
-# 仓库级开发任务：装依赖、构建前端、测试、检查。
+# 仓库级开发任务：装依赖、构建前端、检查。
 #
 # 与 release.sh 的分工：那边管「发出去和装回来」，这边管「在本地把东西做出来」。
 # 两边都不属于任何单个服务，所以都不放在 scripts/services/ 下。
+#
+# 本仓库不再包含 Python 源码——前端（funflix-web）是独立 npm 包，后端直接用
+# funflix 自己的命令。这里的 .venv 只服务于 worker/sync 两个仍由本仓库管理的
+# bash 生命周期服务，装的是 funflix 本身，不是本仓库的代码。
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 FRONTEND_DIR="${ROOT}/frontend"
-STATIC_DIR="${ROOT}/src/funflix_web/static"
+STATIC_DIR="${FRONTEND_DIR}/dist"
 VENV="${ROOT}/.venv"
 
 readonly SCRIPT_DIR ROOT FRONTEND_DIR STATIC_DIR VENV
@@ -30,8 +34,8 @@ do_bootstrap() {
   require uv "安装见 https://github.com/astral-sh/uv"
   require pnpm "安装：npm i -g pnpm"
 
-  info "创建虚拟环境并安装 Python 依赖"
-  (cd "${ROOT}" && uv venv && uv pip install -e ".[dev]")
+  info "创建虚拟环境并安装 funflix（worker/sync 开发态用）"
+  (cd "${ROOT}" && uv venv && uv pip install funflix)
 
   info "安装前端依赖"
   (cd "${FRONTEND_DIR}" && pnpm install)
@@ -39,10 +43,11 @@ do_bootstrap() {
   cat <<EOF
 
 开发环境就绪。接下来：
-    scripts/setup.sh build           构建前端
-    scripts/setup.sh start web dev   起服务
+    scripts/setup.sh build              构建前端
+    scripts/setup.sh start worker dev   起 worker
+    cd frontend && pnpm dev             起前端（热重载，代理到本地 funflix server start）
 
-funflix 现在从 PyPI 按版本安装，不需要同级目录下的 funflix 检出。
+funflix 从 PyPI 按版本安装，不需要同级目录下的 funflix 检出。
 EOF
 }
 
@@ -59,21 +64,9 @@ do_build() {
   info "产物已写入 ${STATIC_DIR}"
 }
 
-# --- test / lint ------------------------------------------------------------
-
-do_test() {
-  [[ -x "${VENV}/bin/python" ]] || die "缺少虚拟环境，先执行 scripts/setup.sh bootstrap"
-  info "Python 测试"
-  (cd "${ROOT}" && "${VENV}/bin/python" -m pytest -q)
-}
+# --- lint ---------------------------------------------------------------
 
 do_lint() {
-  [[ -x "${VENV}/bin/python" ]] || die "缺少虚拟环境，先执行 scripts/setup.sh bootstrap"
-
-  info "ruff"
-  (cd "${ROOT}" && "${VENV}/bin/python" -m ruff check src tests)
-  (cd "${ROOT}" && "${VENV}/bin/python" -m ruff format --check src tests)
-
   info "前端类型检查"
   (cd "${FRONTEND_DIR}" && pnpm exec vue-tsc --noEmit)
 
@@ -115,7 +108,7 @@ main() {
     (($# <= 2)) || die "migrate 最多接受一个环境参数"
     do_migrate "${2:-dev}"
     ;;
-  bootstrap | build | test | lint | clean)
+  bootstrap | build | lint | clean)
     (($# == 1)) || die "${action} 不接受额外参数"
     "do_${action}"
     ;;

@@ -1,7 +1,6 @@
-# 前端构建产物：由 pnpm build 生成，不入库
-/src/funflix_web/static/
+# 前端构建产物（frontend/dist/，由 pnpm build 生成）：由下面通用的 dist/ 覆盖
 
-# Python
+# Python（worker/sync 用的 funflix 虚拟环境）
 __pycache__/
 *.py[cod]
 .venv/

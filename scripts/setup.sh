@@ -16,8 +16,8 @@ readonly ROOT SERVICE_DIR RELEASE_SCRIPT DEV_SCRIPT
 # 服务级动作需要 service；仓库级动作不需要
 readonly -a SERVICE_ACTIONS=(start stop restart run status)
 readonly -a RELEASE_ACTIONS=(publish install)
-readonly -a DEV_ACTIONS=(bootstrap build migrate test lint clean)
-readonly -a SERVICES=(web worker sync)
+readonly -a DEV_ACTIONS=(bootstrap build migrate lint clean)
+readonly -a SERVICES=(worker sync)
 
 # 刻意不提供 all：目前没有必须批量操作的场景，而一个语义含糊的 all
 # （顺序？失败了继续还是中止？）比没有它更糟。真需要时再显式加。
@@ -27,24 +27,27 @@ usage() {
 funflix-web 统一入口。
 
 开发：
-  scripts/setup.sh bootstrap            装 Python 与前端依赖
-  scripts/setup.sh build                构建前端到 src/funflix_web/static
+  scripts/setup.sh bootstrap            装 funflix（worker/sync 用）与前端依赖
+  scripts/setup.sh build                构建前端 npm 包（frontend/dist）
   scripts/setup.sh migrate [dev|prod]   建库 / 执行数据库迁移
-  scripts/setup.sh test                 跑测试
-  scripts/setup.sh lint                 ruff + vue-tsc + shell 语法
+  scripts/setup.sh lint                 vue-tsc + shell 语法
   scripts/setup.sh clean                清掉构建产物与 .run/
 
-服务：
-  scripts/setup.sh <start|stop|restart|run> <web|worker|sync> <dev|prod>
-  scripts/setup.sh status [web|worker|sync]
+服务（worker / sync，二者继续用本仓库的 bash 生命周期管理）：
+  scripts/setup.sh <start|stop|restart|run> <worker|sync> <dev|prod>
+  scripts/setup.sh status [worker|sync]
 
 发布：
-  scripts/setup.sh publish              构建前端 + funbuild 发布正式包
-  scripts/setup.sh install [版本号]      按精确版本装到 .run/prod-venv
+  scripts/setup.sh publish              构建前端 + 发布 npm 包到私有仓库
+  scripts/setup.sh install <funflix版本> 按精确版本把 funflix 装到 .run/prod-venv
 
 说明：
+  前端（funflix-web，Web 界面 + 反代）已拆成独立 npm 包，不再由本脚本管理进程，
+  见 frontend/README.md：`npm i -g funflix-web && funflix-web start`。
+  后端接口是 funflix 自带的 `funflix server start`，同样不需要本仓库包装，直接运行即可。
+
   start    后台启动，PID 与日志写在 .run/
-  run      前台运行，Ctrl-C 直接停止；web 的 run dev 带热重载
+  run      前台运行，Ctrl-C 直接停止
   status   不交互，一次报告全部环境
   prod     只运行装好的正式包，缺包时直接失败，不会回落到源码
 EOF
@@ -81,7 +84,6 @@ choose() {
 
 service_script_for() {
   case "$1" in
-  web) printf '%s\n' "${SERVICE_DIR}/web.sh" ;;
   worker) printf '%s\n' "${SERVICE_DIR}/worker.sh" ;;
   sync) printf '%s\n' "${SERVICE_DIR}/sync.sh" ;;
   *) return 1 ;;

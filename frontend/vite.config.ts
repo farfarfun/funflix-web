@@ -5,8 +5,10 @@ import Components from 'unplugin-vue-components/vite'
 import { NaiveUiResolver } from 'unplugin-vue-components/resolvers'
 import { defineConfig } from 'vite'
 
-// 后端固定监听 8810，开发态的代理必须指向同一个端口。
-const BACKEND = 'http://127.0.0.1:8810'
+// 后端是 funflix 自己的 `funflix server start`（约定端口 18810），
+// 不再经由 funflix-web 转发。生产态由 funflix-web 这个 npm 包内置的反代
+// （见 server/proxy.js）接管，环境变量同名，本地联调时两边指向同一个值。
+const BACKEND = process.env.FUNFLIX_API_BASE_URL || 'http://127.0.0.1:18810'
 
 export default defineConfig({
   plugins: [
@@ -25,8 +27,7 @@ export default defineConfig({
   },
 
   build: {
-    // 直接产出到 Python 包内，`funflix-web serve` 起来就能托管，中间不需要拷贝步骤
-    outDir: '../src/funflix_web/static',
+    // 默认 dist/，随 npm 包一起发布；`funflix-web` 的 server 模块直接从包内读取。
     emptyOutDir: true,
   },
 
