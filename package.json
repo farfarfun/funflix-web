@@ -1,6 +1,6 @@
 {
   "name": "funflix-web",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "funflix 的 Web 界面：静态托管 + 反代后端接口，start/stop/restart/status 一个命令搞定",
   "type": "module",
   "packageManager": "pnpm@12.1.0",
