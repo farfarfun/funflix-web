@@ -49,10 +49,14 @@ export const PROVIDER_LABEL: Record<Provider, string> = {
   alipan: '阿里云盘',
   baidu: '百度网盘',
   pan115: '115',
+  pan123: '123云盘',
+  mobile139: '移动云盘',
+  guangya: '光雅网盘',
   lanzou: '蓝奏云',
   tianyi: '天翼云盘',
   xunlei: '迅雷',
   magnet: '磁力',
+  ed2k: '电驴',
   other: '其他',
 }
 
@@ -63,12 +67,26 @@ export const PROVIDER_COLOR: Record<Provider, string> = {
   alipan: '#2b7fff',
   baidu: '#2468f2',
   pan115: '#00a3ff',
+  pan123: '#00c48c',
+  mobile139: '#0b8fff',
+  guangya: '#8a2be2',
   lanzou: '#00c2a8',
   tianyi: '#d6336c',
   xunlei: '#2e8b57',
   magnet: '#9095a3',
+  ed2k: '#607d8b',
   other: '#9095a3',
 }
+
+/** 「按网盘细分校验状态」表格的列标签，措辞与 CHECK_STATUS_LABEL 保持一致
+ * （unchecked/checking 合并展示为「未校验」）。 */
+export const PROVIDER_CHECK_BUCKET_LABEL = {
+  total: '总量',
+  valid: '有效',
+  unchecked: '未校验',
+  invalid: '失效',
+  other: '其他',
+} as const
 
 export const QUALITY_LABEL: Record<Quality, string> = {
   '4k': '4K',

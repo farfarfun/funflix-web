@@ -5,10 +5,10 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { hasAdminKey } from '@/api/auth'
 import { api } from '@/api/client'
-import type { MediaType } from '@/api/types'
+import type { MediaType, Provider } from '@/api/types'
 import PosterCard from '@/components/PosterCard.vue'
 import { usePagedList } from '@/composables/usePagedList'
-import { MEDIA_TYPE_COLOR, MEDIA_TYPE_LABEL } from '@/utils/display'
+import { MEDIA_TYPE_COLOR, MEDIA_TYPE_LABEL, PROVIDER_LABEL, toOptions } from '@/utils/display'
 
 /** 首屏骨架屏的占位数：够铺满一屏又不会渲染太多占位节点。 */
 const SKELETON_COUNT = 12
@@ -20,6 +20,7 @@ const keyword = ref('')
 const mediaType = ref<MediaType | null>(null)
 const year = ref<number | null>(null)
 const validOnly = ref(false)
+const provider = ref<Provider | null>(null)
 
 const TYPE_OPTIONS = Object.keys(MEDIA_TYPE_LABEL) as MediaType[]
 
@@ -31,6 +32,7 @@ const { items, total, page, size, loading, error, refresh, goto, reload } = useP
       media_type: mediaType.value,
       year: year.value,
       valid_only: validOnly.value,
+      provider: provider.value,
       page: p,
       size: s,
     }),
@@ -54,6 +56,7 @@ function readFromUrl() {
   mediaType.value = typeof q.type === 'string' ? (q.type as MediaType) : null
   year.value = q.year ? Number(q.year) || null : null
   validOnly.value = q.valid === '1'
+  provider.value = typeof q.provider === 'string' ? (q.provider as Provider) : null
   page.value = Number(q.page) > 0 ? Number(q.page) : 1
   // 等这一轮的 watch 都跑完再解除，否则灌值本身会触发回写
   void nextTick(() => {
@@ -68,6 +71,7 @@ function buildQuery(): Record<string, string> {
   if (mediaType.value) q.type = mediaType.value
   if (year.value) q.year = String(year.value)
   if (validOnly.value) q.valid = '1'
+  if (provider.value) q.provider = provider.value
   if (page.value > 1) q.page = String(page.value)
   return q
 }
@@ -105,12 +109,17 @@ function applyFilters(delay: number) {
 
 /** 是否有任何筛选条件在生效，用来区分「搜不到」与「库里本来就没数据」两种空状态。 */
 const hasActiveFilters = computed(
-  () => keyword.value.trim() !== '' || mediaType.value !== null || year.value !== null || validOnly.value,
+  () =>
+    keyword.value.trim() !== '' ||
+    mediaType.value !== null ||
+    year.value !== null ||
+    validOnly.value ||
+    provider.value !== null,
 )
 
 // 输入框按键触发，要防抖；下拉与勾选是离散动作，立即生效
 watch([keyword, year], () => applyFilters(300))
-watch([mediaType, validOnly], () => applyFilters(0))
+watch([mediaType, validOnly, provider], () => applyFilters(0))
 
 function changePage(next: number) {
   goto(next)
@@ -170,6 +179,13 @@ onMounted(() => {
           :max="2100"
           placeholder="年份"
           class="year-input"
+        />
+        <n-select
+          v-model:value="provider"
+          :options="toOptions(PROVIDER_LABEL)"
+          clearable
+          placeholder="全部网盘"
+          style="width: 150px"
         />
         <n-checkbox v-model:checked="validOnly">只看有可用资源</n-checkbox>
         <n-text depth="3" class="total">共 {{ total }} 部</n-text>

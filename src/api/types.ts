@@ -17,10 +17,14 @@ export type Provider =
   | 'alipan'
   | 'baidu'
   | 'pan115'
+  | 'pan123'
+  | 'mobile139'
+  | 'guangya'
   | 'lanzou'
   | 'tianyi'
   | 'xunlei'
   | 'magnet'
+  | 'ed2k'
   | 'other'
 
 export type CheckStatus =
@@ -162,6 +166,7 @@ export interface PipelineStats {
   resource_total: number
   resource_by_check: Record<string, number>
   resource_by_provider: Record<string, number>
+  resource_by_provider_check: Record<string, Record<string, number>>
   resource_orphan: number
   media_resource_total: number
   check_total: number

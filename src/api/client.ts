@@ -76,6 +76,7 @@ export interface MediaQuery extends Params {
   media_type?: string | null
   year?: number | null
   valid_only?: boolean
+  provider?: string | null
   page?: number
   size?: number
 }
