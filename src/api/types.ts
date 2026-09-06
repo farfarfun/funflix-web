@@ -114,6 +114,9 @@ export interface Source {
   consecutive_failures: number
   last_error: string | null
   total_collected: number
+  raw_total: number
+  raw_parsed: number
+  resource_total: number
   created_at: string
   updated_at: string
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { AddOutline, CloudUploadOutline, RefreshOutline } from '@vicons/ionicons5'
 import { useDialog, useMessage } from 'naive-ui'
-import { onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
 import { hasAdminKey } from '@/api/auth'
 import { api } from '@/api/client'
@@ -31,6 +31,71 @@ const { items, total, page, size, loading, error, refresh, goto, reload, setSize
 )
 
 watch([sourceType, enabledFilter], reload)
+
+// --- 表头点击排序：只在当前页内排，采集源是人工登记的清单，量级小，
+// 不值得为此给后端加排序参数（详见 usePagedList 调用处，后端固定按入库时间倒序）---
+type SortKey =
+  | 'id'
+  | 'source_type'
+  | 'identifier'
+  | 'cursor'
+  | 'total_collected'
+  | 'raw_total'
+  | 'raw_parsed'
+  | 'resource_total'
+  | 'last_fetched_at'
+  | 'enabled'
+
+const sortKey = ref<SortKey | null>(null)
+const sortOrder = ref<'asc' | 'desc'>('asc')
+
+const SORT_ACCESSOR: Record<SortKey, (s: Source) => string | number> = {
+  id: (s) => s.id,
+  source_type: (s) => s.source_type,
+  identifier: (s) => s.title || s.identifier,
+  cursor: (s) => s.cursor_message_id ?? '',
+  total_collected: (s) => s.total_collected,
+  raw_total: (s) => s.raw_total,
+  raw_parsed: (s) => s.raw_parsed,
+  resource_total: (s) => s.resource_total,
+  last_fetched_at: (s) => s.last_fetched_at ?? '',
+  enabled: (s) => (s.enabled ? 1 : 0),
+}
+
+const COLUMNS: { key: SortKey; label: string; width: string }[] = [
+  { key: 'id', label: 'ID', width: '84px' },
+  { key: 'source_type', label: '类型', width: '110px' },
+  { key: 'identifier', label: '标识', width: 'auto' },
+  { key: 'cursor', label: '水位', width: '90px' },
+  { key: 'total_collected', label: '已采', width: '80px' },
+  { key: 'raw_total', label: '原始文本', width: '90px' },
+  { key: 'raw_parsed', label: '已解析', width: '90px' },
+  { key: 'resource_total', label: '解析出资源', width: '100px' },
+  { key: 'last_fetched_at', label: '最近采集', width: '120px' },
+  { key: 'enabled', label: '启用', width: '74px' },
+]
+
+function toggleSort(key: SortKey) {
+  if (sortKey.value === key) {
+    sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortOrder.value = 'asc'
+  }
+}
+
+const sortedItems = computed(() => {
+  if (sortKey.value === null) return items.value
+  const accessor = SORT_ACCESSOR[sortKey.value]
+  const dir = sortOrder.value === 'asc' ? 1 : -1
+  return [...items.value].sort((a, b) => {
+    const av = accessor(a)
+    const bv = accessor(b)
+    if (av < bv) return -dir
+    if (av > bv) return dir
+    return 0
+  })
+})
 
 // --- 新增 ---
 const showCreate = ref(false)
@@ -183,18 +248,23 @@ onMounted(async () => {
       <n-table v-else :single-line="false" size="small">
         <thead>
           <tr>
-            <th style="width: 84px">ID</th>
-            <th style="width: 110px">类型</th>
-            <th>标识</th>
-            <th style="width: 90px">水位</th>
-            <th style="width: 80px">已采</th>
-            <th style="width: 120px">最近采集</th>
-            <th style="width: 74px">启用</th>
+            <th
+              v-for="col in COLUMNS"
+              :key="col.key"
+              :style="{ width: col.width }"
+              class="sortable"
+              @click="toggleSort(col.key)"
+            >
+              {{ col.label }}
+              <span class="sort-arrow" :class="{ active: sortKey === col.key }">
+                {{ sortKey === col.key && sortOrder === 'desc' ? '▼' : '▲' }}
+              </span>
+            </th>
             <th style="width: 150px">操作</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="s in items" :key="s.id">
+          <tr v-for="s in sortedItems" :key="s.id">
             <td><n-text code style="font-size: 11px" :title="s.id">{{ shortId(s.id) }}</n-text></td>
             <td>{{ SOURCE_TYPE_LABEL[s.source_type] ?? s.source_type }}</td>
             <td>
@@ -207,6 +277,9 @@ onMounted(async () => {
             </td>
             <td>{{ s.cursor_message_id ?? '-' }}</td>
             <td>{{ s.total_collected }}</td>
+            <td>{{ s.raw_total }}</td>
+            <td>{{ s.raw_parsed }}/{{ s.raw_total }}</td>
+            <td>{{ s.resource_total }}</td>
             <td>
               <n-tooltip>
                 <template #trigger><span>{{ fromNow(s.last_fetched_at) }}</span></template>
@@ -305,6 +378,21 @@ onMounted(async () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.sortable:hover {
+  color: var(--n-primary-color, #6d5ef8);
+}
+.sort-arrow {
+  font-size: 10px;
+  opacity: 0.25;
+}
+.sort-arrow.active {
+  opacity: 1;
 }
 .hint {
   font-size: 12px;
