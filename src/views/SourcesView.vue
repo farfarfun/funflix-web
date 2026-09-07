@@ -11,7 +11,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { hasAdminKey } from '@/api/auth'
 import { api } from '@/api/client'
 import type { CollectReport, ParseReport, Source, SourceType } from '@/api/types'
-import { usePagedList } from '@/composables/usePagedList'
 import { formatTime, fromNow, shortId, SOURCE_TYPE_LABEL, toOptions } from '@/utils/display'
 
 const message = useMessage()
@@ -24,21 +23,64 @@ const enabledOptions: { label: string; value: 'true' | 'false' }[] = [
   { label: '已停用', value: 'false' },
 ]
 
-const { items, total, page, size, loading, error, refresh, goto, reload, setSize } = usePagedList(
-  (p, s) =>
-    api.listSources({
-      source_type: sourceType.value,
-      enabled: enabledFilter.value === null ? null : enabledFilter.value === 'true',
-      page: p,
-      size: s,
-    }),
-  20,
-)
+// 采集源是人工登记的清单，量级小；为了让排序覆盖全部匹配结果而不是只在当前页
+// 内瞎排，这里干脆把符合筛选条件的全量拉回来，排序、分页都在前端做——省得
+// 为了给后端加排序参数，还要把统计字段（原始文本数等）本来的聚合子查询改成
+// 参与 order_by/limit，得不偿失。
+const PAGE_FETCH_SIZE = 200
+
+const allSources = ref<Source[]>([])
+const total = computed(() => allSources.value.length)
+const page = ref(1)
+const size = ref(20)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+async function refresh(): Promise<void> {
+  loading.value = true
+  error.value = null
+  try {
+    const collected: Source[] = []
+    let p = 1
+    for (;;) {
+      const data = await api.listSources({
+        source_type: sourceType.value,
+        enabled: enabledFilter.value === null ? null : enabledFilter.value === 'true',
+        page: p,
+        size: PAGE_FETCH_SIZE,
+      })
+      collected.push(...data.items)
+      if (data.items.length === 0 || collected.length >= data.total) break
+      p += 1
+    }
+    allSources.value = collected
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : String(e)
+    allSources.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+/** 换页：纯前端分页，不重新拉取。 */
+function goto(next: number): void {
+  page.value = next
+}
+
+/** 改筛选条件后调用：回到第一页，否则会停在一个可能不存在的页码上。 */
+function reload(): void {
+  page.value = 1
+  void refresh()
+}
+
+function setSize(next: number): void {
+  size.value = next
+  page.value = 1
+}
 
 watch([sourceType, enabledFilter], reload)
 
-// --- 表头点击排序：只在当前页内排，采集源是人工登记的清单，量级小，
-// 不值得为此给后端加排序参数（详见 usePagedList 调用处，后端固定按入库时间倒序）---
+// --- 表头点击排序：对全量数据排序（见上面 allSources），不受分页影响 ---
 type SortKey =
   | 'id'
   | 'source_type'
@@ -94,19 +136,26 @@ function toggleSort(key: SortKey) {
     sortKey.value = key
     sortOrder.value = 'asc'
   }
+  // 排序变了，原来第几页对应的是哪批数据也变了，回第一页避免停在错位的页码上
+  page.value = 1
 }
 
 const sortedItems = computed(() => {
-  if (sortKey.value === null) return items.value
+  if (sortKey.value === null) return allSources.value
   const accessor = SORT_ACCESSOR[sortKey.value]
   const dir = sortOrder.value === 'asc' ? 1 : -1
-  return [...items.value].sort((a, b) => {
+  return [...allSources.value].sort((a, b) => {
     const av = accessor(a)
     const bv = accessor(b)
     if (av < bv) return -dir
     if (av > bv) return dir
     return 0
   })
+})
+
+const pagedItems = computed(() => {
+  const start = (page.value - 1) * size.value
+  return sortedItems.value.slice(start, start + size.value)
 })
 
 // --- 新增 ---
@@ -285,7 +334,7 @@ onMounted(async () => {
     <n-alert v-if="error" type="error" class="mb">{{ error }}</n-alert>
 
     <n-spin :show="loading">
-      <n-empty v-if="!loading && items.length === 0" description="还没有采集源" class="empty">
+      <n-empty v-if="!loading && allSources.length === 0" description="还没有采集源" class="empty">
         <template #extra>
           <n-button size="small" :disabled="!hasAdminKey" @click="showCreate = true">登记第一个</n-button>
         </template>
@@ -310,7 +359,7 @@ onMounted(async () => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="s in sortedItems" :key="s.id" :class="{ 'row-failing': s.consecutive_failures > 0 }">
+          <tr v-for="s in pagedItems" :key="s.id" :class="{ 'row-failing': s.consecutive_failures > 0 }">
             <td><n-text code style="font-size: 11px" :title="s.id">{{ shortId(s.id) }}</n-text></td>
             <td>{{ SOURCE_TYPE_LABEL[s.source_type] ?? s.source_type }}</td>
             <td>
