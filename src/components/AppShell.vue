@@ -5,7 +5,8 @@ import {
   CloudDownloadOutline,
   CloudUploadOutline,
   DocumentTextOutline,
-  KeyOutline,
+  LogInOutline,
+  LogOutOutline,
   MenuOutline,
   MoonOutline,
   SearchOutline,
@@ -18,7 +19,7 @@ import type { Component } from 'vue'
 import { computed, h, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
-import { adminKey, hasAdminKey, setAdminKey } from '@/api/auth'
+import { currentUser, isAuthenticated, logout } from '@/api/auth'
 import { pageHeading } from '@/composables/usePageHeading'
 
 defineProps<{ dark: boolean }>()
@@ -30,18 +31,11 @@ const router = useRouter()
 // --- 移动端导航：窄屏下横向导航挤不下，改成汉堡按钮开抽屉 ---
 const mobileMenuOpen = ref(false)
 
-// --- 管理密钥 ---
-const showKey = ref(false)
-const draftKey = ref('')
-
-function openKeyDialog() {
-  draftKey.value = adminKey.value
-  showKey.value = true
-}
-
-function saveKey() {
-  setAdminKey(draftKey.value)
-  showKey.value = false
+async function handleLogout() {
+  await logout()
+  // 退出时如果正停在需要登录的「运维」页面上，留在原地也会被守卫弹去登录页，
+  // 不如直接跳过去，避免中间那一瞬间的空白/报错闪烁
+  if (route.meta.requiresAuth) void router.push({ name: 'login' })
 }
 
 function renderIcon(icon: Component) {
@@ -165,15 +159,21 @@ watch(
             <n-icon size="18"><MenuOutline /></n-icon>
           </n-button>
           <n-space :size="2" align="center">
-            <n-tooltip>
+            <n-tooltip v-if="isAuthenticated">
               <template #trigger>
-                <n-button quaternary circle @click="openKeyDialog">
-                  <n-badge :dot="!hasAdminKey" :offset="[-2, 2]" type="warning">
-                    <n-icon size="18"><KeyOutline /></n-icon>
-                  </n-badge>
+                <n-button quaternary circle @click="handleLogout">
+                  <n-icon size="18"><LogOutOutline /></n-icon>
                 </n-button>
               </template>
-              管理密钥
+              {{ currentUser?.username }} · 退出登录
+            </n-tooltip>
+            <n-tooltip v-else>
+              <template #trigger>
+                <n-button quaternary circle @click="router.push({ name: 'login' })">
+                  <n-icon size="18"><LogInOutline /></n-icon>
+                </n-button>
+              </template>
+              登录
             </n-tooltip>
             <n-tooltip>
               <template #trigger>
@@ -206,33 +206,6 @@ watch(
         </transition>
       </RouterView>
     </main>
-
-    <n-modal v-model:show="showKey" preset="card" title="管理密钥" style="max-width: 480px">
-      <n-form-item label="X-API-Key" :show-feedback="false">
-        <n-input
-          v-model:value="draftKey"
-          type="password"
-          show-password-on="click"
-          placeholder="服务端 FUNFLIX_ADMIN_API_KEY 的值"
-          @keyup.enter="saveKey"
-        />
-      </n-form-item>
-      <n-text depth="3" class="key-hint">
-        浏览与搜索不需要密钥。登记采集源、触发采集、删除等写操作需要，
-        密钥只保存在这台浏览器的 localStorage 里，不会上传。
-      </n-text>
-      <template #footer>
-        <n-space justify="space-between">
-          <n-button size="small" quaternary @click="setAdminKey(''); showKey = false">
-            清除
-          </n-button>
-          <n-space>
-            <n-button size="small" @click="showKey = false">取消</n-button>
-            <n-button size="small" type="primary" @click="saveKey">保存</n-button>
-          </n-space>
-        </n-space>
-      </template>
-    </n-modal>
 
     <n-drawer v-model:show="mobileMenuOpen" placement="left" :width="240" class="mobile-drawer">
       <n-drawer-content title="funflix" closable :native-scrollbar="false">

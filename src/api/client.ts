@@ -1,7 +1,7 @@
 /** 后端接口调用。用原生 fetch，不引第三方 HTTP 库。 */
 
-import { adminKey } from './auth'
 import type {
+  AuthConfig,
   CollectReport,
   MediaDetail,
   MediaSummary,
@@ -12,6 +12,7 @@ import type {
   RawDocumentSummary,
   Resource,
   Source,
+  User,
 } from './types'
 
 const BASE = '/api/v1'
@@ -41,16 +42,31 @@ function query(params?: Params): string {
   return qs ? `?${qs}` : ''
 }
 
+/**
+ * 401 时要清掉本地镜像的登录态（例如会话过期），但这里不能直接 import
+ * `./auth`——auth.ts 反过来要引这个文件的 `api`，会形成循环依赖。
+ * 用回调注册的方式解耦：谁关心 401 谁自己订阅。
+ */
+let onUnauthorized: (() => void) | null = null
+
+export function setUnauthorizedHandler(fn: () => void): void {
+  onUnauthorized = fn
+}
+
 async function request<T>(path: string, init?: RequestInit & { params?: Params }): Promise<T> {
   const { params, ...rest } = init ?? {}
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(rest.headers as Record<string, string> | undefined),
   }
-  // 读接口带上也无妨，后端只在写接口上校验
-  if (adminKey.value) headers['X-API-Key'] = adminKey.value
 
-  const resp = await fetch(`${BASE}${path}${query(params)}`, { ...rest, headers })
+  // 「运维」区整体走会话 cookie 鉴权，同源请求默认就会带上，这里显式声明
+  // 只是为了不依赖浏览器的默认值。
+  const resp = await fetch(`${BASE}${path}${query(params)}`, {
+    ...rest,
+    headers,
+    credentials: 'same-origin',
+  })
 
   if (!resp.ok) {
     // FastAPI 的报错在 detail 里；它可能是字符串，也可能是校验错误数组
@@ -64,7 +80,7 @@ async function request<T>(path: string, init?: RequestInit & { params?: Params }
     } catch {
       // 响应不是 JSON（网关错误页等），保留上面的兜底文案
     }
-    if (resp.status === 401) detail = '管理密钥无效，请在左下角「管理密钥」里更新'
+    if (resp.status === 401) onUnauthorized?.()
     throw new ApiError(resp.status, detail)
   }
 
@@ -83,6 +99,18 @@ export interface MediaQuery extends Params {
 }
 
 export const api = {
+  // --- 账号 ---
+  authConfig: () => request<AuthConfig>('/auth/config'),
+  me: () => request<User | null>('/auth/me'),
+  login: (username: string, password: string) =>
+    request<User>('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+  logout: () => request<void>('/auth/logout', { method: 'POST' }),
+  register: (username: string, password: string) =>
+    request<User>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    }),
+
   // --- 作品 ---
   listMedia: (params: MediaQuery) => request<Page<MediaSummary>>('/media', { params }),
   getMedia: (id: string) => request<MediaDetail>(`/media/${id}`),

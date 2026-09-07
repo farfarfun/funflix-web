@@ -3,7 +3,7 @@ import { SearchOutline } from '@vicons/ionicons5'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { hasAdminKey } from '@/api/auth'
+import { isAuthenticated } from '@/api/auth'
 import { api } from '@/api/client'
 import type { MediaType, Provider } from '@/api/types'
 import PosterCard from '@/components/PosterCard.vue'
@@ -215,7 +215,7 @@ onMounted(() => {
         :description="hasActiveFilters ? '没有匹配的作品，换个关键词或筛选条件试试' : '库里还没有作品'"
         class="mt-lg"
       >
-        <template v-if="hasAdminKey && !hasActiveFilters" #extra>
+        <template v-if="isAuthenticated && !hasActiveFilters" #extra>
           <n-text depth="3">去「采集源」登记一个频道并采集，再跑解析即可入库。</n-text>
         </template>
       </n-empty>

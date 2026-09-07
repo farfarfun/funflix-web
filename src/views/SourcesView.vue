@@ -8,7 +8,6 @@ import {
 import { useDialog, useMessage } from 'naive-ui'
 import { computed, onMounted, ref, watch } from 'vue'
 
-import { hasAdminKey } from '@/api/auth'
 import { api } from '@/api/client'
 import type { CollectReport, ParseReport, Source, SourceType } from '@/api/types'
 import { formatTime, fromNow, shortId, SOURCE_TYPE_LABEL, toOptions } from '@/utils/display'
@@ -299,7 +298,7 @@ onMounted(async () => {
           <template #icon><n-icon><RefreshOutline /></n-icon></template>
           刷新
         </n-button>
-        <n-button size="small" type="primary" :disabled="!hasAdminKey" @click="showCreate = true">
+        <n-button size="small" type="primary" @click="showCreate = true">
           <template #icon><n-icon><AddOutline /></n-icon></template>
           登记采集源
         </n-button>
@@ -326,17 +325,12 @@ onMounted(async () => {
       </n-space>
     </n-card>
 
-    <n-alert v-if="!hasAdminKey" type="info" class="mb" title="当前为只读">
-      登记、采集、启停与删除都需要管理密钥（服务端的
-      <n-text code>FUNFLIX_ADMIN_API_KEY</n-text>）。在左下角「管理密钥」里填入后即可操作。
-    </n-alert>
-
     <n-alert v-if="error" type="error" class="mb">{{ error }}</n-alert>
 
     <n-spin :show="loading">
       <n-empty v-if="!loading && allSources.length === 0" description="还没有采集源" class="empty">
         <template #extra>
-          <n-button size="small" :disabled="!hasAdminKey" @click="showCreate = true">登记第一个</n-button>
+          <n-button size="small" @click="showCreate = true">登记第一个</n-button>
         </template>
       </n-empty>
 
@@ -403,7 +397,6 @@ onMounted(async () => {
               <n-switch
                 size="small"
                 :value="s.enabled"
-                :disabled="!hasAdminKey"
                 @update:value="(v: boolean) => toggle(s, v)"
               />
             </td>
@@ -412,7 +405,7 @@ onMounted(async () => {
                 <n-button
                   size="tiny"
                   :loading="collecting === s.id"
-                  :disabled="collecting !== null || !hasAdminKey"
+                  :disabled="collecting !== null"
                   @click="collect(s)"
                 >
                   采集
@@ -420,7 +413,7 @@ onMounted(async () => {
                 <n-button
                   size="tiny"
                   :loading="parsing === s.id"
-                  :disabled="parsing !== null || !hasAdminKey"
+                  :disabled="parsing !== null"
                   @click="parse(s)"
                 >
                   解析
@@ -428,10 +421,9 @@ onMounted(async () => {
                 <n-dropdown
                   trigger="click"
                   :options="rowMenuOptions"
-                  :disabled="!hasAdminKey"
                   @select="(key: string) => onRowMenuSelect(key, s)"
                 >
-                  <n-button size="tiny" quaternary circle :disabled="!hasAdminKey">
+                  <n-button size="tiny" quaternary circle>
                     <template #icon><n-icon><EllipsisHorizontalOutline /></n-icon></template>
                   </n-button>
                 </n-dropdown>

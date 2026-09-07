@@ -166,6 +166,15 @@ export interface RawDocument extends RawDocumentSummary {
   updated_at: string
 }
 
+export interface User {
+  id: string
+  username: string
+}
+
+export interface AuthConfig {
+  registration_enabled: boolean
+}
+
 export interface PipelineStats {
   sources_total: number
   sources_enabled: number
