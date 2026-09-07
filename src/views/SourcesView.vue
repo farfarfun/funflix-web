@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { AddOutline, CloudUploadOutline, RefreshOutline } from '@vicons/ionicons5'
+import {
+  AddOutline,
+  CloudUploadOutline,
+  EllipsisHorizontalOutline,
+  RefreshOutline,
+} from '@vicons/ionicons5'
 import { useDialog, useMessage } from 'naive-ui'
 import { computed, onMounted, ref, watch } from 'vue'
 
@@ -49,6 +54,13 @@ type SortKey =
 const sortKey = ref<SortKey | null>(null)
 const sortOrder = ref<'asc' | 'desc'>('asc')
 
+// 已解析列展示成百分比（更好一眼看出转化效果），排序也按这个百分比走，
+// 跟展示的数字保持一致——不然点了排序箭头，肉眼却看不出谁在前谁在后。
+function parsedPercent(s: Source): number {
+  if (s.raw_total === 0) return 0
+  return Math.round((s.raw_parsed / s.raw_total) * 100)
+}
+
 const SORT_ACCESSOR: Record<SortKey, (s: Source) => string | number> = {
   id: (s) => s.id,
   source_type: (s) => s.source_type,
@@ -56,7 +68,7 @@ const SORT_ACCESSOR: Record<SortKey, (s: Source) => string | number> = {
   cursor: (s) => s.cursor_message_id ?? '',
   total_collected: (s) => s.total_collected,
   raw_total: (s) => s.raw_total,
-  raw_parsed: (s) => s.raw_parsed,
+  raw_parsed: (s) => parsedPercent(s),
   resource_total: (s) => s.resource_total,
   last_fetched_at: (s) => s.last_fetched_at ?? '',
   enabled: (s) => (s.enabled ? 1 : 0),
@@ -69,7 +81,7 @@ const COLUMNS: { key: SortKey; label: string; width: string }[] = [
   { key: 'cursor', label: '水位', width: '90px' },
   { key: 'total_collected', label: '已采', width: '80px' },
   { key: 'raw_total', label: '原始文本', width: '90px' },
-  { key: 'raw_parsed', label: '已解析', width: '90px' },
+  { key: 'raw_parsed', label: '已解析', width: '130px' },
   { key: 'resource_total', label: '解析出资源', width: '100px' },
   { key: 'last_fetched_at', label: '最近采集', width: '120px' },
   { key: 'enabled', label: '启用', width: '74px' },
@@ -190,6 +202,13 @@ async function toggle(source: Source, enabled: boolean) {
   }
 }
 
+// --- 行内操作菜单（目前只有删除，用下拉菜单收纳，避免操作列一排按钮太挤）---
+const rowMenuOptions = [{ label: '删除', key: 'delete' }]
+
+function onRowMenuSelect(key: string, source: Source) {
+  if (key === 'delete') confirmRemove(source)
+}
+
 // --- 删除 ---
 function confirmRemove(source: Source) {
   dialog.warning({
@@ -291,7 +310,7 @@ onMounted(async () => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="s in sortedItems" :key="s.id">
+          <tr v-for="s in sortedItems" :key="s.id" :class="{ 'row-failing': s.consecutive_failures > 0 }">
             <td><n-text code style="font-size: 11px" :title="s.id">{{ shortId(s.id) }}</n-text></td>
             <td>{{ SOURCE_TYPE_LABEL[s.source_type] ?? s.source_type }}</td>
             <td>
@@ -305,7 +324,25 @@ onMounted(async () => {
             <td>{{ s.cursor_message_id ?? '-' }}</td>
             <td>{{ s.total_collected }}</td>
             <td>{{ s.raw_total }}</td>
-            <td>{{ s.raw_parsed }}/{{ s.raw_total }}</td>
+            <td>
+              <n-tooltip>
+                <template #trigger>
+                  <div class="parsed-cell">
+                    <n-progress
+                      type="line"
+                      :percentage="parsedPercent(s)"
+                      :show-indicator="false"
+                      :height="6"
+                      :border-radius="3"
+                      color="#6D5EF8"
+                      class="bar"
+                    />
+                    <span class="pct">{{ parsedPercent(s) }}%</span>
+                  </div>
+                </template>
+                {{ s.raw_parsed }} / {{ s.raw_total }}
+              </n-tooltip>
+            </td>
             <td>{{ s.resource_total }}</td>
             <td>
               <n-tooltip>
@@ -339,9 +376,16 @@ onMounted(async () => {
                 >
                   解析
                 </n-button>
-                <n-button size="tiny" type="error" quaternary :disabled="!hasAdminKey" @click="confirmRemove(s)">
-                  删除
-                </n-button>
+                <n-dropdown
+                  trigger="click"
+                  :options="rowMenuOptions"
+                  :disabled="!hasAdminKey"
+                  @select="(key: string) => onRowMenuSelect(key, s)"
+                >
+                  <n-button size="tiny" quaternary circle :disabled="!hasAdminKey">
+                    <template #icon><n-icon><EllipsisHorizontalOutline /></n-icon></template>
+                  </n-button>
+                </n-dropdown>
               </n-space>
             </td>
           </tr>
@@ -393,6 +437,25 @@ onMounted(async () => {
 <style scoped>
 :deep(tbody tr:nth-child(even)) {
   background: rgba(128, 128, 128, 0.05);
+}
+:deep(tbody tr.row-failing) {
+  box-shadow: inset 3px 0 0 #e88080;
+}
+.parsed-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.parsed-cell .bar {
+  flex: 1;
+  min-width: 48px;
+}
+.parsed-cell .pct {
+  flex: none;
+  width: 36px;
+  text-align: right;
+  font-size: 12px;
+  opacity: 0.8;
 }
 .head {
   margin-bottom: 16px;
