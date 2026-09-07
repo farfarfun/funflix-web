@@ -1,17 +1,30 @@
 <script setup lang="ts">
-import { SearchOutline } from '@vicons/ionicons5'
+import { AppsOutline, GridOutline, ListOutline, SearchOutline } from '@vicons/ionicons5'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { isAuthenticated } from '@/api/auth'
 import { api } from '@/api/client'
 import type { MediaType, Provider } from '@/api/types'
+import MediaListRow from '@/components/MediaListRow.vue'
 import PosterCard from '@/components/PosterCard.vue'
 import { usePagedList } from '@/composables/usePagedList'
 import { MEDIA_TYPE_COLOR, MEDIA_TYPE_LABEL, PROVIDER_LABEL, toOptions } from '@/utils/display'
 
 /** 首屏骨架屏的占位数：够铺满一屏又不会渲染太多占位节点。 */
 const SKELETON_COUNT = 12
+
+// --- 展示格式：列表 / 小图卡片 / 大图卡片，记在本地，跨会话保留选择 -----------
+type ViewMode = 'list' | 'card-sm' | 'card-lg'
+const VIEW_KEY = 'funflix.mediaViewMode'
+const VIEW_MODES: { mode: ViewMode; icon: typeof ListOutline; label: string }[] = [
+  { mode: 'list', icon: ListOutline, label: '列表' },
+  { mode: 'card-sm', icon: AppsOutline, label: '小图卡片' },
+  { mode: 'card-lg', icon: GridOutline, label: '大图卡片' },
+]
+// 大部分条目没有封面图，卡片模式下空占位不好看，默认用信息密度更高的列表格式
+const viewMode = ref<ViewMode>((localStorage.getItem(VIEW_KEY) as ViewMode | null) ?? 'list')
+watch(viewMode, (v) => localStorage.setItem(VIEW_KEY, v))
 
 const route = useRoute()
 const router = useRouter()
@@ -157,10 +170,28 @@ onMounted(() => {
 <template>
   <div class="page">
     <div class="toolbar">
-      <n-input v-model:value="keyword" clearable placeholder="搜索剧名，支持别名与简繁" class="search">
-        <template #prefix><n-icon :depth="3"><SearchOutline /></n-icon></template>
-        <template v-if="debouncing" #suffix><n-spin :size="14" /></template>
-      </n-input>
+      <div class="toolbar-top">
+        <n-input v-model:value="keyword" clearable placeholder="搜索剧名，支持别名与简繁" class="search">
+          <template #prefix><n-icon :depth="3"><SearchOutline /></n-icon></template>
+          <template v-if="debouncing" #suffix><n-spin :size="14" /></template>
+        </n-input>
+
+        <n-button-group class="view-switch">
+          <n-tooltip v-for="vm in VIEW_MODES" :key="vm.mode">
+            <template #trigger>
+              <n-button
+                size="small"
+                :type="viewMode === vm.mode ? 'primary' : 'default'"
+                :ghost="viewMode === vm.mode"
+                @click="viewMode = vm.mode"
+              >
+                <n-icon :size="16"><component :is="vm.icon" /></n-icon>
+              </n-button>
+            </template>
+            {{ vm.label }}
+          </n-tooltip>
+        </n-button-group>
+      </div>
 
       <div class="filters">
         <div class="pills">
@@ -220,7 +251,10 @@ onMounted(() => {
         </template>
       </n-empty>
 
-      <div v-else class="grid mt">
+      <div v-else-if="viewMode === 'list'" class="list-rows mt">
+        <MediaListRow v-for="item in items" :key="item.id" :item="item" />
+      </div>
+      <div v-else class="grid mt" :class="viewMode === 'card-sm' ? 'grid-sm' : 'grid-lg'">
         <PosterCard v-for="item in items" :key="item.id" :item="item" />
       </div>
     </n-spin>
@@ -246,7 +280,17 @@ onMounted(() => {
   flex-direction: column;
   gap: 14px;
 }
+.toolbar-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.view-switch {
+  flex: none;
+  margin-left: auto;
+}
 .search {
+  flex: 1;
   max-width: 420px;
 }
 .filters {
@@ -296,10 +340,20 @@ onMounted(() => {
 }
 .grid {
   display: grid;
-  /* 190px 起步比原来的 160px 宽一点，常见屏宽下落在 5/6/10 这类跟默认
-     每页 30 条能整除的列数上，减少最后一行只剩零星几个的情况 */
+}
+/* 190px 起步比原来的 160px 宽一点，常见屏宽下落在 5/6/10 这类跟默认
+   每页 30 条能整除的列数上，减少最后一行只剩零星几个的情况 */
+.grid-lg {
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: 18px;
+}
+.grid-sm {
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+}
+.list-rows {
+  display: flex;
+  flex-direction: column;
 }
 .skeleton-poster {
   aspect-ratio: 2 / 3;
