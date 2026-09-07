@@ -135,6 +135,16 @@ export interface CollectReport {
   error: string | null
 }
 
+export interface ParseReport {
+  source_id: string
+  claimed: number
+  succeeded: number
+  failed: number
+  reclaimed: number
+  abandoned: number
+  remaining_pending: number
+}
+
 export interface RawDocumentSummary {
   id: string
   content_hash: string

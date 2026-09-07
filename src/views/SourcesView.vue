@@ -5,7 +5,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 
 import { hasAdminKey } from '@/api/auth'
 import { api } from '@/api/client'
-import type { CollectReport, Source, SourceType } from '@/api/types'
+import type { CollectReport, ParseReport, Source, SourceType } from '@/api/types'
 import { usePagedList } from '@/composables/usePagedList'
 import { formatTime, fromNow, shortId, SOURCE_TYPE_LABEL, toOptions } from '@/utils/display'
 
@@ -151,6 +151,33 @@ async function collect(source: Source) {
   }
 }
 
+// --- 解析 ---
+const parsing = ref<string | null>(null)
+
+function describeParse(r: ParseReport): string {
+  return `解析 ${r.claimed} 条，成功 ${r.succeeded}，失败 ${r.failed}`
+}
+
+async function parse(source: Source) {
+  parsing.value = source.id
+  try {
+    const report = await api.parseSource(source.id)
+    if (report.claimed === 0) {
+      message.info('没有待解析的原始文本')
+    } else {
+      message.success(describeParse(report))
+      if (report.remaining_pending > 0) {
+        message.warning(`还有 ${report.remaining_pending} 条待解析，可再点一次`)
+      }
+    }
+    void refresh()
+  } catch (e) {
+    message.error(e instanceof Error ? e.message : String(e))
+  } finally {
+    parsing.value = null
+  }
+}
+
 // --- 启用 / 停用 ---
 async function toggle(source: Source, enabled: boolean) {
   try {
@@ -260,7 +287,7 @@ onMounted(async () => {
                 {{ sortKey === col.key && sortOrder === 'desc' ? '▼' : '▲' }}
               </span>
             </th>
-            <th style="width: 150px">操作</th>
+            <th style="width: 200px">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -303,6 +330,14 @@ onMounted(async () => {
                   @click="collect(s)"
                 >
                   采集
+                </n-button>
+                <n-button
+                  size="tiny"
+                  :loading="parsing === s.id"
+                  :disabled="parsing !== null || !hasAdminKey"
+                  @click="parse(s)"
+                >
+                  解析
                 </n-button>
                 <n-button size="tiny" type="error" quaternary :disabled="!hasAdminKey" @click="confirmRemove(s)">
                   删除

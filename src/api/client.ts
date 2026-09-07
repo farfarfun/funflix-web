@@ -6,6 +6,7 @@ import type {
   MediaDetail,
   MediaSummary,
   Page,
+  ParseReport,
   PipelineStats,
   RawDocument,
   RawDocumentSummary,
@@ -102,6 +103,7 @@ export const api = {
   deleteSource: (id: string) => request<void>(`/sources/${id}`, { method: 'DELETE' }),
   collectSource: (id: string) =>
     request<CollectReport>(`/sources/${id}/collect`, { method: 'POST' }),
+  parseSource: (id: string) => request<ParseReport>(`/sources/${id}/parse`, { method: 'POST' }),
 
   // --- 原始文本 ---
   listRaw: (params: Params) => request<Page<RawDocumentSummary>>('/raw', { params }),
