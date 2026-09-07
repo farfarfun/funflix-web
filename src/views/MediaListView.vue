@@ -25,7 +25,7 @@ const provider = ref<Provider | null>(null)
 const TYPE_OPTIONS = Object.keys(MEDIA_TYPE_LABEL) as MediaType[]
 
 // 解构出来才能在模板里自动解包 —— 对象里的 ref 不会被模板 unwrap
-const { items, total, page, size, loading, error, refresh, goto, reload } = usePagedList(
+const { items, total, page, size, loading, error, refresh, goto, reload, setSize } = usePagedList(
   (p, s) =>
     api.listMedia({
       keyword: keyword.value.trim(),
@@ -36,7 +36,9 @@ const { items, total, page, size, loading, error, refresh, goto, reload } = useP
       page: p,
       size: s,
     }),
-  24,
+  // 30 能被网格常见的列数（2/3/5/6/10）整除，配合下面加宽的卡片最小宽度，
+  // 常见屏宽下更容易凑出整行，减少最后一行只剩几个、看着缺角的情况
+  30,
 )
 
 function selectType(t: MediaType | null) {
@@ -57,6 +59,7 @@ function readFromUrl() {
   year.value = q.year ? Number(q.year) || null : null
   validOnly.value = q.valid === '1'
   provider.value = typeof q.provider === 'string' ? (q.provider as Provider) : null
+  if (Number(q.size) > 0) size.value = Number(q.size)
   page.value = Number(q.page) > 0 ? Number(q.page) : 1
   // 等这一轮的 watch 都跑完再解除，否则灌值本身会触发回写
   void nextTick(() => {
@@ -72,6 +75,7 @@ function buildQuery(): Record<string, string> {
   if (year.value) q.year = String(year.value)
   if (validOnly.value) q.valid = '1'
   if (provider.value) q.provider = provider.value
+  if (size.value !== 30) q.size = String(size.value)
   if (page.value > 1) q.page = String(page.value)
   return q
 }
@@ -123,6 +127,11 @@ watch([mediaType, validOnly, provider], () => applyFilters(0))
 
 function changePage(next: number) {
   goto(next)
+  writeToUrl()
+}
+
+function changeSize(next: number) {
+  setSize(next)
   writeToUrl()
 }
 
@@ -223,7 +232,10 @@ onMounted(() => {
       :page-size="size"
       :item-count="total"
       show-quick-jumper
+      show-size-picker
+      :page-sizes="[12, 30, 60, 90]"
       @update:page="changePage"
+      @update:page-size="changeSize"
     />
   </div>
 </template>
@@ -284,7 +296,9 @@ onMounted(() => {
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  /* 190px 起步比原来的 160px 宽一点，常见屏宽下落在 5/6/10 这类跟默认
+     每页 30 条能整除的列数上，减少最后一行只剩零星几个的情况 */
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: 18px;
 }
 .skeleton-poster {
