@@ -16,7 +16,7 @@ import {
 import type { DropdownOption, MenuOption } from 'naive-ui'
 import { NIcon } from 'naive-ui'
 import type { Component } from 'vue'
-import { computed, h, ref, watch } from 'vue'
+import { computed, h, nextTick, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
 import { currentUser, isAuthenticated, logout } from '@/api/auth'
@@ -116,9 +116,12 @@ const breadcrumb = computed(() => {
 
 // 切页面后抽屉里的旧菜单还开着会挡住新页面，导航一发生就收起
 watch(
-  () => route.fullPath,
+  () => route.path,
   () => {
     mobileMenuOpen.value = false
+    void nextTick(() => {
+      document.querySelector<HTMLElement>('#main-content')?.focus({ preventScroll: true })
+    })
   },
 )
 </script>
@@ -392,6 +395,9 @@ watch(
   max-width: 1600px;
   margin: 0 auto;
   padding: 28px 24px 48px;
+}
+.content:focus {
+  outline: none;
 }
 
 /* 窄屏：横向导航链接与中间面包屑挤不下，收起来改走抽屉 */

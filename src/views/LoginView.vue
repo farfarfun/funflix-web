@@ -38,7 +38,11 @@ async function submit() {
     <n-card size="large" class="card" title="登录">
       <n-form @submit.prevent="submit">
         <n-form-item label="用户名" :show-feedback="false">
-          <n-input v-model:value="username" placeholder="用户名" @keyup.enter="submit" />
+          <n-input
+            v-model:value="username"
+            placeholder="用户名"
+            :input-props="{ autocomplete: 'username' }"
+          />
         </n-form-item>
         <n-form-item label="密码" :show-feedback="false" class="mt">
           <n-input
@@ -46,15 +50,15 @@ async function submit() {
             type="password"
             show-password-on="click"
             placeholder="密码"
-            @keyup.enter="submit"
+            :input-props="{ autocomplete: 'current-password' }"
           />
         </n-form-item>
         <n-button
           type="primary"
+          attr-type="submit"
           block
           class="mt-lg"
           :loading="submitting"
-          @click="submit"
         >
           <template #icon><n-icon><LogInOutline /></n-icon></template>
           登录

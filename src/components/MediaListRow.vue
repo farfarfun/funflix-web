@@ -50,6 +50,8 @@ const broken = ref(false)
   align-items: center;
   gap: 14px;
   padding: 8px 10px;
+  min-height: 72px;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.1);
   border-radius: var(--radius-md);
   text-decoration: none;
   color: inherit;
@@ -59,13 +61,10 @@ const broken = ref(false)
 .row:hover {
   background: var(--poster-surface);
 }
-.row + .row {
-  border-top: 1px solid rgba(128, 128, 128, 0.1);
-}
 .thumb {
   flex: none;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 56px;
   border-radius: var(--radius-sm);
   overflow: hidden;
   display: flex;
@@ -105,7 +104,6 @@ const broken = ref(false)
 
 @media (max-width: 480px) {
   .row {
-    min-height: 64px;
     padding: 8px 4px;
   }
   .meta {

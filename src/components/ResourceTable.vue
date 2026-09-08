@@ -237,4 +237,10 @@ const displayResources = computed(() => {
 .meta-item {
   white-space: nowrap;
 }
+
+@media (pointer: coarse) {
+  .sort-chip {
+    min-height: 44px;
+  }
+}
 </style>

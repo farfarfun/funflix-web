@@ -79,7 +79,7 @@ const broken = ref(false)
   right: 8px;
   padding: 2px 7px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #fff;
   background: rgba(24, 160, 88, 0.88);
@@ -105,7 +105,7 @@ const broken = ref(false)
 }
 .scrim-meta {
   margin-top: 4px;
-  font-size: 11px;
+  font-size: 12px;
   opacity: 0.8;
   white-space: nowrap;
   overflow: hidden;

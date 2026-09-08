@@ -341,13 +341,16 @@ onMounted(async () => {
               v-for="col in COLUMNS"
               :key="col.key"
               :style="{ width: col.width }"
-              class="sortable"
-              @click="toggleSort(col.key)"
+              :aria-sort="
+                sortKey === col.key ? (sortOrder === 'asc' ? 'ascending' : 'descending') : undefined
+              "
             >
-              {{ col.label }}
-              <span class="sort-arrow" :class="{ active: sortKey === col.key }">
-                {{ sortKey === col.key && sortOrder === 'desc' ? '▼' : '▲' }}
-              </span>
+              <button type="button" class="sortable" @click="toggleSort(col.key)">
+                {{ col.label }}
+                <span aria-hidden="true" class="sort-arrow" :class="{ active: sortKey === col.key }">
+                  {{ sortKey === col.key && sortOrder === 'desc' ? '▼' : '▲' }}
+                </span>
+              </button>
             </th>
             <th style="width: 200px">操作</th>
           </tr>
@@ -519,6 +522,13 @@ onMounted(async () => {
   white-space: nowrap;
 }
 .sortable {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
@@ -541,5 +551,11 @@ onMounted(async () => {
 .pager {
   margin-top: 20px;
   justify-content: center;
+}
+
+@media (pointer: coarse) {
+  .sortable {
+    min-height: 44px;
+  }
 }
 </style>

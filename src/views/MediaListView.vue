@@ -192,7 +192,7 @@ onMounted(() => {
         <n-input
           v-model:value="keyword"
           clearable
-          placeholder="搜索剧名，支持别名与简繁"
+          placeholder="搜索剧名或别名"
           :input-props="{ 'aria-label': '搜索作品' }"
           class="search"
         >
@@ -271,7 +271,12 @@ onMounted(() => {
       </div>
     </div>
 
-    <n-alert v-if="error" type="error" class="mt">{{ error }}</n-alert>
+    <n-alert v-if="error" type="error" class="mt">
+      <div class="error-content">
+        <span>{{ error }}</span>
+        <n-button text type="error" @click="refresh">重试</n-button>
+      </div>
+    </n-alert>
 
     <!-- 首屏（还没有任何数据可显示）用骨架屏，比整页转圈更快出内容感；
          换页/改筛选时列表里已经有旧数据，走下面的 n-spin 蒙层就够了 -->
@@ -292,7 +297,7 @@ onMounted(() => {
       <n-skeleton v-for="i in SKELETON_COUNT" v-else :key="i" class="skeleton-poster" :sharp="false" />
     </div>
 
-    <n-spin v-else :show="loading">
+    <n-spin v-else-if="!error" :show="loading">
       <n-empty
         v-if="!loading && items.length === 0"
         :description="hasActiveFilters ? '没有匹配的作品，换个关键词或筛选条件试试' : '库里还没有作品'"
@@ -396,6 +401,12 @@ onMounted(() => {
 .mt-lg {
   margin-top: 64px;
 }
+.error-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
 .grid {
   display: grid;
 }
@@ -431,8 +442,8 @@ onMounted(() => {
 }
 .skeleton-thumb {
   flex: none;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 56px;
   border-radius: var(--radius-sm);
 }
 .skeleton-lines {
@@ -444,6 +455,15 @@ onMounted(() => {
 .pager {
   margin-top: 28px;
   justify-content: center;
+}
+
+@media (min-width: 1024px) {
+  .list-rows,
+  .skeleton-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 24px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -460,7 +480,7 @@ onMounted(() => {
     width: 100%;
   }
   .pill {
-    min-height: 40px;
+    min-height: 44px;
     padding-inline: 13px;
   }
   .year-input,
