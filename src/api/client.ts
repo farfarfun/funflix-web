@@ -129,6 +129,10 @@ export const api = {
   updateSource: (id: string, payload: Record<string, unknown>) =>
     request<Source>(`/sources/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
   deleteSource: (id: string) => request<void>(`/sources/${id}`, { method: 'DELETE' }),
+  resetSourceCursor: (id: string) =>
+    request<void>(`/sources/${id}/reset-cursor`, { method: 'POST' }),
+  resetSourceParse: (id: string) =>
+    request<number>(`/sources/${id}/reset-parse`, { method: 'POST' }),
   collectSource: (id: string) =>
     request<CollectReport>(`/sources/${id}/collect`, { method: 'POST' }),
   parseSource: (id: string) => request<ParseReport>(`/sources/${id}/parse`, { method: 'POST' }),

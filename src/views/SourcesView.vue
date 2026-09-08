@@ -5,6 +5,7 @@ import {
   EllipsisHorizontalOutline,
   RefreshOutline,
 } from '@vicons/ionicons5'
+import type { DropdownOption } from 'naive-ui'
 import { useDialog, useMessage } from 'naive-ui'
 import { computed, onMounted, ref, watch } from 'vue'
 
@@ -53,6 +54,8 @@ async function refresh(): Promise<void> {
       p += 1
     }
     allSources.value = collected
+    const currentIds = new Set(collected.map((source) => source.id))
+    selectedIds.value = selectedIds.value.filter((id) => currentIds.has(id))
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e)
     allSources.value = []
@@ -69,6 +72,7 @@ function goto(next: number): void {
 /** 改筛选条件后调用：回到第一页，否则会停在一个可能不存在的页码上。 */
 function reload(): void {
   page.value = 1
+  selectedIds.value = []
   void refresh()
 }
 
@@ -157,6 +161,29 @@ const pagedItems = computed(() => {
   return sortedItems.value.slice(start, start + size.value)
 })
 
+// --- 多选 ---
+const selectedIds = ref<string[]>([])
+const selectedSources = computed(() => {
+  const ids = new Set(selectedIds.value)
+  return allSources.value.filter((source) => ids.has(source.id))
+})
+const allSelected = computed(
+  () => allSources.value.length > 0 && selectedIds.value.length === allSources.value.length,
+)
+const partlySelected = computed(
+  () => selectedIds.value.length > 0 && selectedIds.value.length < allSources.value.length,
+)
+
+function toggleSelected(id: string, checked: boolean): void {
+  const ids = new Set(selectedIds.value)
+  checked ? ids.add(id) : ids.delete(id)
+  selectedIds.value = [...ids]
+}
+
+function toggleAll(checked: boolean): void {
+  selectedIds.value = checked ? allSources.value.map((source) => source.id) : []
+}
+
 // --- 新增 ---
 const showCreate = ref(false)
 const creating = ref(false)
@@ -184,96 +211,231 @@ async function create() {
   }
 }
 
-// --- 采集 ---
-const collecting = ref<string | null>(null)
+// --- 异步操作队列：同一源串行，不同源最多四路并发 ---
+type OperationKind = 'collect' | 'parse' | 'enable' | 'disable' | 'reset-cursor' | 'reset-parse' | 'delete'
+
+interface OperationTask {
+  key: string
+  label: string
+  sourceId: string
+  sourceLabel: string
+  run: () => Promise<string | undefined>
+}
+
+const operationQueue: OperationTask[] = []
+const pendingOperationKeys = ref(new Set<string>())
+const activeSourceIds = new Set<string>()
+const queuedOperations = ref(0)
+const runningOperations = ref(0)
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
+
+function sourceLabel(source: Source): string {
+  return source.title || source.identifier
+}
+
+function hasPending(source: Source, kind: OperationKind): boolean {
+  return pendingOperationKeys.value.has(`${kind}:${source.id}`)
+}
+
+function scheduleRefresh(): void {
+  if (refreshTimer !== null) clearTimeout(refreshTimer)
+  refreshTimer = setTimeout(() => {
+    refreshTimer = null
+    void refresh()
+  }, 300)
+}
+
+function enqueueOperation(
+  source: Source,
+  kind: OperationKind,
+  label: string,
+  run: OperationTask['run'],
+): boolean {
+  const key = `${kind}:${source.id}`
+  if (pendingOperationKeys.value.has(key)) return false
+  operationQueue.push({ key, label, sourceId: source.id, sourceLabel: sourceLabel(source), run })
+  pendingOperationKeys.value = new Set(pendingOperationKeys.value).add(key)
+  queuedOperations.value = operationQueue.length
+  drainQueue()
+  return true
+}
+
+function drainQueue(): void {
+  while (runningOperations.value < 4) {
+    const index = operationQueue.findIndex((task) => !activeSourceIds.has(task.sourceId))
+    if (index < 0) return
+    const [task] = operationQueue.splice(index, 1)
+    if (!task) return
+    queuedOperations.value = operationQueue.length
+    runningOperations.value += 1
+    activeSourceIds.add(task.sourceId)
+    void executeOperation(task)
+  }
+}
+
+async function executeOperation(task: OperationTask): Promise<void> {
+  try {
+    const detail = await task.run()
+    message.success(`${task.sourceLabel}：${task.label}完成${detail ? `，${detail}` : ''}`)
+  } catch (e) {
+    message.error(`${task.sourceLabel}：${task.label}失败，${e instanceof Error ? e.message : String(e)}`)
+  } finally {
+    const keys = new Set(pendingOperationKeys.value)
+    keys.delete(task.key)
+    pendingOperationKeys.value = keys
+    activeSourceIds.delete(task.sourceId)
+    runningOperations.value -= 1
+    scheduleRefresh()
+    drainQueue()
+  }
+}
 
 function describe(r: CollectReport): string {
   return `拉取 ${r.fetched} 条，新增 ${r.created}，去重 ${r.duplicated}，无正文跳过 ${r.skipped_empty}`
 }
 
-async function collect(source: Source) {
-  collecting.value = source.id
-  try {
+function queueCollect(source: Source): boolean {
+  return enqueueOperation(source, 'collect', '采集', async () => {
     const report = await api.collectSource(source.id)
-    if (report.ok) {
-      message.success(describe(report))
-      if (report.truncated) {
-        message.warning('撞到翻页上限，还有更早的新消息没取完，可再采一次')
-      }
-    } else {
-      message.error(report.error ?? '采集失败')
-    }
-    void refresh()
-  } catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
-  } finally {
-    collecting.value = null
-  }
+    if (!report.ok) throw new Error(report.error ?? '采集失败')
+    return `${describe(report)}${report.truncated ? '，仍有内容待采' : ''}`
+  })
 }
 
-// --- 解析 ---
-const parsing = ref<string | null>(null)
+function queueResetCursor(source: Source): boolean {
+  return enqueueOperation(source, 'reset-cursor', '重置水位', async () => {
+    await api.resetSourceCursor(source.id)
+    return undefined
+  })
+}
+
+function confirmResetCursor(source: Source) {
+  dialog.warning({
+    title: '重置采集水位',
+    content: `确定重置 ${sourceLabel(source)}？已有原始文本不会删除。`,
+    positiveText: '重置',
+    negativeText: '取消',
+    onPositiveClick: () => queueResetCursor(source),
+  })
+}
 
 function describeParse(r: ParseReport): string {
   return `解析 ${r.claimed} 条，成功 ${r.succeeded}，失败 ${r.failed}`
 }
 
-async function parse(source: Source) {
-  parsing.value = source.id
-  try {
+function queueParse(source: Source): boolean {
+  return enqueueOperation(source, 'parse', '解析', async () => {
     const report = await api.parseSource(source.id)
-    if (report.claimed === 0) {
-      message.info('没有待解析的原始文本')
-    } else {
-      message.success(describeParse(report))
-      if (report.remaining_pending > 0) {
-        message.warning(`还有 ${report.remaining_pending} 条待解析，可再点一次`)
-      }
-    }
-    void refresh()
-  } catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
-  } finally {
-    parsing.value = null
-  }
+    return report.claimed === 0
+      ? '没有待解析文本'
+      : `${describeParse(report)}${report.remaining_pending > 0 ? `，剩余 ${report.remaining_pending} 条` : ''}`
+  })
 }
 
-// --- 启用 / 停用 ---
-async function toggle(source: Source, enabled: boolean) {
-  try {
+function queueResetParse(source: Source): boolean {
+  return enqueueOperation(source, 'reset-parse', '重置解析', async () => {
+    const count = await api.resetSourceParse(source.id)
+    return `${count} 条原始文本已重新入队`
+  })
+}
+
+function confirmResetParse(source: Source) {
+  dialog.warning({
+    title: '重置解析标记',
+    content: `确定重置 ${sourceLabel(source)}？该源的原始文本将使用当前规则重新解析。`,
+    positiveText: '重置解析',
+    negativeText: '取消',
+    onPositiveClick: () => queueResetParse(source),
+  })
+}
+
+function queueToggle(source: Source, enabled: boolean): boolean {
+  const kind = enabled ? 'enable' : 'disable'
+  return enqueueOperation(source, kind, enabled ? '启用' : '停用', async () => {
     await api.updateSource(source.id, { enabled })
-    message.success(enabled ? '已启用' : '已停用')
-    void refresh()
-  } catch (e) {
-    message.error(e instanceof Error ? e.message : String(e))
-    void refresh()
-  }
+    return undefined
+  })
 }
 
-// --- 行内操作菜单（目前只有删除，用下拉菜单收纳，避免操作列一排按钮太挤）---
-const rowMenuOptions = [{ label: '删除', key: 'delete' }]
+const rowMenuOptions: DropdownOption[] = [
+  { label: '重置水位', key: 'reset-cursor' },
+  { label: '重置解析', key: 'reset-parse' },
+  { type: 'divider', key: 'divider' },
+  { label: '删除', key: 'delete' },
+]
 
 function onRowMenuSelect(key: string, source: Source) {
-  if (key === 'delete') confirmRemove(source)
+  if (key === 'reset-cursor') confirmResetCursor(source)
+  else if (key === 'reset-parse') confirmResetParse(source)
+  else if (key === 'delete') confirmRemove(source)
 }
 
-// --- 删除 ---
+function queueRemove(source: Source): boolean {
+  return enqueueOperation(source, 'delete', '删除', async () => {
+    await api.deleteSource(source.id)
+    return undefined
+  })
+}
+
 function confirmRemove(source: Source) {
   dialog.warning({
     title: '删除采集源',
-    content: `确定删除 ${source.identifier}？已采集的原始文本会保留。`,
+    content: `确定删除 ${sourceLabel(source)}？已采集的原始文本会保留。`,
     positiveText: '删除',
     negativeText: '取消',
-    onPositiveClick: async () => {
-      try {
-        await api.deleteSource(source.id)
-        message.success('已删除')
-        void refresh()
-      } catch (e) {
-        message.error(e instanceof Error ? e.message : String(e))
-      }
-    },
+    onPositiveClick: () => queueRemove(source),
   })
+}
+
+type BulkAction = OperationKind
+
+const bulkMenuOptions: DropdownOption[] = [
+  { label: '重置水位', key: 'reset-cursor' },
+  { label: '重置解析', key: 'reset-parse' },
+  { type: 'divider', key: 'divider' },
+  { label: '删除', key: 'delete' },
+]
+
+function queueSelected(action: BulkAction): void {
+  let added = 0
+  for (const source of selectedSources.value) {
+    const queued =
+      action === 'collect'
+        ? queueCollect(source)
+        : action === 'parse'
+          ? queueParse(source)
+          : action === 'enable'
+            ? queueToggle(source, true)
+            : action === 'disable'
+              ? queueToggle(source, false)
+              : action === 'reset-cursor'
+                ? queueResetCursor(source)
+                : action === 'reset-parse'
+                  ? queueResetParse(source)
+                  : queueRemove(source)
+    added += Number(queued)
+  }
+  message.info(added > 0 ? `已加入 ${added} 个操作` : '所选操作已在队列中')
+}
+
+function confirmSelected(action: 'reset-cursor' | 'reset-parse' | 'delete'): void {
+  const labels = {
+    'reset-cursor': ['重置采集水位', '重置水位'],
+    'reset-parse': ['重置解析标记', '重置解析'],
+    delete: ['删除采集源', '删除'],
+  } as const
+  const [title, positiveText] = labels[action]
+  dialog.warning({
+    title,
+    content: `确定对选中的 ${selectedSources.value.length} 个采集源执行“${positiveText}”？`,
+    positiveText,
+    negativeText: '取消',
+    onPositiveClick: () => queueSelected(action),
+  })
+}
+
+function onBulkMenuSelect(key: string): void {
+  if (key === 'reset-cursor' || key === 'reset-parse' || key === 'delete') confirmSelected(key)
 }
 
 onMounted(async () => {
@@ -327,6 +489,34 @@ onMounted(async () => {
 
     <n-alert v-if="error" type="error" class="mb">{{ error }}</n-alert>
 
+    <div
+      v-if="selectedSources.length > 0 || runningOperations + queuedOperations > 0"
+      class="operation-bar"
+    >
+      <n-space v-if="selectedSources.length > 0" align="center" :size="8" wrap>
+        <n-text>已选 {{ selectedSources.length }} 个</n-text>
+        <n-button size="tiny" @click="queueSelected('collect')">采集</n-button>
+        <n-button size="tiny" @click="queueSelected('parse')">解析</n-button>
+        <n-button size="tiny" @click="queueSelected('enable')">启用</n-button>
+        <n-button size="tiny" @click="queueSelected('disable')">停用</n-button>
+        <n-dropdown trigger="click" :options="bulkMenuOptions" @select="onBulkMenuSelect">
+          <n-button size="tiny">
+            更多
+            <template #icon><n-icon><EllipsisHorizontalOutline /></n-icon></template>
+          </n-button>
+        </n-dropdown>
+      </n-space>
+      <n-text
+        v-if="runningOperations + queuedOperations > 0"
+        depth="3"
+        class="queue-status"
+        role="status"
+        aria-live="polite"
+      >
+        执行中 {{ runningOperations }}，等待 {{ queuedOperations }}
+      </n-text>
+    </div>
+
     <n-spin :show="loading" class="table-scroll">
       <n-empty v-if="!loading && allSources.length === 0" description="还没有采集源" class="empty">
         <template #extra>
@@ -337,6 +527,14 @@ onMounted(async () => {
       <n-table v-else :single-line="false" size="small">
         <thead>
           <tr>
+            <th class="select-cell">
+              <n-checkbox
+                :checked="allSelected"
+                :indeterminate="partlySelected"
+                aria-label="选择所有筛选结果"
+                @update:checked="toggleAll"
+              />
+            </th>
             <th
               v-for="col in COLUMNS"
               :key="col.key"
@@ -356,7 +554,21 @@ onMounted(async () => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="s in pagedItems" :key="s.id" :class="{ 'row-failing': s.consecutive_failures > 0 }">
+          <tr
+            v-for="s in pagedItems"
+            :key="s.id"
+            :class="{
+              'row-failing': s.consecutive_failures > 0,
+              'row-selected': selectedIds.includes(s.id),
+            }"
+          >
+            <td class="select-cell">
+              <n-checkbox
+                :checked="selectedIds.includes(s.id)"
+                :aria-label="`选择 ${sourceLabel(s)}`"
+                @update:checked="(checked: boolean) => toggleSelected(s.id, checked)"
+              />
+            </td>
             <td><n-text code style="font-size: 11px" :title="s.id">{{ shortId(s.id) }}</n-text></td>
             <td>{{ SOURCE_TYPE_LABEL[s.source_type] ?? s.source_type }}</td>
             <td>
@@ -400,24 +612,24 @@ onMounted(async () => {
               <n-switch
                 size="small"
                 :value="s.enabled"
-                @update:value="(v: boolean) => toggle(s, v)"
+                :loading="hasPending(s, 'enable') || hasPending(s, 'disable')"
+                :aria-label="`${s.enabled ? '停用' : '启用'} ${sourceLabel(s)}`"
+                @update:value="(v: boolean) => queueToggle(s, v)"
               />
             </td>
             <td>
               <n-space :size="4">
                 <n-button
                   size="tiny"
-                  :loading="collecting === s.id"
-                  :disabled="collecting !== null"
-                  @click="collect(s)"
+                  :loading="hasPending(s, 'collect')"
+                  @click="queueCollect(s)"
                 >
                   采集
                 </n-button>
                 <n-button
                   size="tiny"
-                  :loading="parsing === s.id"
-                  :disabled="parsing !== null"
-                  @click="parse(s)"
+                  :loading="hasPending(s, 'parse')"
+                  @click="queueParse(s)"
                 >
                   解析
                 </n-button>
@@ -426,7 +638,7 @@ onMounted(async () => {
                   :options="rowMenuOptions"
                   @select="(key: string) => onRowMenuSelect(key, s)"
                 >
-                  <n-button size="tiny" quaternary circle>
+                  <n-button size="tiny" quaternary circle :aria-label="`${sourceLabel(s)} 更多操作`">
                     <template #icon><n-icon><EllipsisHorizontalOutline /></n-icon></template>
                   </n-button>
                 </n-dropdown>
@@ -484,6 +696,28 @@ onMounted(async () => {
 }
 :deep(tbody tr.row-failing) {
   box-shadow: inset 3px 0 0 #e88080;
+}
+:deep(tbody tr.row-selected) {
+  background: color-mix(in srgb, var(--n-color-target, #6d5ef8) 8%, transparent);
+}
+.select-cell {
+  width: 44px;
+  text-align: center;
+}
+.operation-bar {
+  min-height: 44px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--n-border-color, rgba(128, 128, 128, 0.24));
+  border-radius: 4px;
+}
+.queue-status {
+  flex: none;
+  font-variant-numeric: tabular-nums;
 }
 .parsed-cell {
   display: flex;
@@ -556,6 +790,13 @@ onMounted(async () => {
 @media (pointer: coarse) {
   .sortable {
     min-height: 44px;
+  }
+}
+
+@media (max-width: 640px) {
+  .operation-bar {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>
