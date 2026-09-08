@@ -168,10 +168,12 @@ const selectedSources = computed(() => {
   return allSources.value.filter((source) => ids.has(source.id))
 })
 const allSelected = computed(
-  () => allSources.value.length > 0 && selectedIds.value.length === allSources.value.length,
+  () =>
+    pagedItems.value.length > 0 &&
+    pagedItems.value.every((source) => selectedIds.value.includes(source.id)),
 )
 const partlySelected = computed(
-  () => selectedIds.value.length > 0 && selectedIds.value.length < allSources.value.length,
+  () => !allSelected.value && pagedItems.value.some((source) => selectedIds.value.includes(source.id)),
 )
 
 function toggleSelected(id: string, checked: boolean): void {
@@ -181,7 +183,9 @@ function toggleSelected(id: string, checked: boolean): void {
 }
 
 function toggleAll(checked: boolean): void {
-  selectedIds.value = checked ? allSources.value.map((source) => source.id) : []
+  const ids = new Set(selectedIds.value)
+  for (const source of pagedItems.value) checked ? ids.add(source.id) : ids.delete(source.id)
+  selectedIds.value = [...ids]
 }
 
 // --- 新增 ---
@@ -227,7 +231,6 @@ const pendingOperationKeys = ref(new Set<string>())
 const activeSourceIds = new Set<string>()
 const queuedOperations = ref(0)
 const runningOperations = ref(0)
-let refreshTimer: ReturnType<typeof setTimeout> | null = null
 
 function sourceLabel(source: Source): string {
   return source.title || source.identifier
@@ -235,14 +238,6 @@ function sourceLabel(source: Source): string {
 
 function hasPending(source: Source, kind: OperationKind): boolean {
   return pendingOperationKeys.value.has(`${kind}:${source.id}`)
-}
-
-function scheduleRefresh(): void {
-  if (refreshTimer !== null) clearTimeout(refreshTimer)
-  refreshTimer = setTimeout(() => {
-    refreshTimer = null
-    void refresh()
-  }, 300)
 }
 
 function enqueueOperation(
@@ -273,6 +268,15 @@ function drainQueue(): void {
   }
 }
 
+function cancelQueuedOperations(): void {
+  const canceled = operationQueue.splice(0)
+  const keys = new Set(pendingOperationKeys.value)
+  for (const task of canceled) keys.delete(task.key)
+  pendingOperationKeys.value = keys
+  queuedOperations.value = 0
+  message.info(`已取消 ${canceled.length} 个等待操作`)
+}
+
 async function executeOperation(task: OperationTask): Promise<void> {
   try {
     const detail = await task.run()
@@ -285,7 +289,6 @@ async function executeOperation(task: OperationTask): Promise<void> {
     pendingOperationKeys.value = keys
     activeSourceIds.delete(task.sourceId)
     runningOperations.value -= 1
-    scheduleRefresh()
     drainQueue()
   }
 }
@@ -456,7 +459,7 @@ onMounted(async () => {
         <n-h2 class="title">采集源</n-h2>
       </n-space>
       <n-space>
-        <n-button size="small" @click="refresh">
+        <n-button size="small" @click="refresh()">
           <template #icon><n-icon><RefreshOutline /></n-icon></template>
           刷新
         </n-button>
@@ -506,15 +509,24 @@ onMounted(async () => {
           </n-button>
         </n-dropdown>
       </n-space>
-      <n-text
+      <n-space
         v-if="runningOperations + queuedOperations > 0"
-        depth="3"
+        align="center"
+        :size="8"
         class="queue-status"
-        role="status"
-        aria-live="polite"
       >
-        执行中 {{ runningOperations }}，等待 {{ queuedOperations }}
-      </n-text>
+        <n-text depth="3" role="status" aria-live="polite">
+          执行中 {{ runningOperations }}，等待 {{ queuedOperations }}
+        </n-text>
+        <n-button
+          size="tiny"
+          :disabled="queuedOperations === 0"
+          aria-label="取消所有等待中的操作"
+          @click="cancelQueuedOperations"
+        >
+          取消
+        </n-button>
+      </n-space>
     </div>
 
     <n-spin :show="loading" class="table-scroll">
@@ -531,7 +543,7 @@ onMounted(async () => {
               <n-checkbox
                 :checked="allSelected"
                 :indeterminate="partlySelected"
-                aria-label="选择所有筛选结果"
+                aria-label="选择当前页"
                 @update:checked="toggleAll"
               />
             </th>
