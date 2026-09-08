@@ -125,7 +125,8 @@ watch(
 
 <template>
   <div class="shell">
-    <header class="navbar" :style="{ background: dark ? 'rgba(11, 12, 16, 0.86)' : 'rgba(255, 255, 255, 0.86)' }">
+    <a class="skip-link" href="#main-content">跳到主要内容</a>
+    <header class="navbar">
       <div class="navbar-inner">
         <div class="nav-left">
           <RouterLink :to="{ name: 'media' }" class="brand">
@@ -138,10 +139,15 @@ watch(
               作品检索
             </RouterLink>
             <n-dropdown trigger="click" :options="opsOptions" @select="onOpsSelect">
-              <span class="nav-link nav-link-dropdown" :class="{ active: isOpsActive }">
+              <button
+                type="button"
+                class="nav-link nav-link-dropdown"
+                :class="{ active: isOpsActive }"
+                aria-haspopup="menu"
+              >
                 运维
                 <n-icon size="12"><ChevronDownOutline /></n-icon>
-              </span>
+              </button>
             </n-dropdown>
           </nav>
         </div>
@@ -155,13 +161,21 @@ watch(
         </div>
 
         <div class="nav-right">
-          <n-button quaternary circle size="small" class="hamburger" @click="mobileMenuOpen = true">
+          <n-button
+            quaternary
+            circle
+            class="hamburger"
+            aria-label="打开导航"
+            aria-controls="mobile-nav"
+            :aria-expanded="mobileMenuOpen"
+            @click="mobileMenuOpen = true"
+          >
             <n-icon size="18"><MenuOutline /></n-icon>
           </n-button>
           <n-space :size="2" align="center">
             <n-tooltip v-if="isAuthenticated">
               <template #trigger>
-                <n-button quaternary circle @click="handleLogout">
+                <n-button quaternary circle aria-label="退出登录" @click="handleLogout">
                   <n-icon size="18"><LogOutOutline /></n-icon>
                 </n-button>
               </template>
@@ -169,7 +183,7 @@ watch(
             </n-tooltip>
             <n-tooltip v-else>
               <template #trigger>
-                <n-button quaternary circle @click="router.push({ name: 'login' })">
+                <n-button quaternary circle aria-label="登录" @click="router.push({ name: 'login' })">
                   <n-icon size="18"><LogInOutline /></n-icon>
                 </n-button>
               </template>
@@ -177,7 +191,12 @@ watch(
             </n-tooltip>
             <n-tooltip>
               <template #trigger>
-                <n-button quaternary circle @click="$emit('toggleTheme')">
+                <n-button
+                  quaternary
+                  circle
+                  :aria-label="dark ? '切换到浅色' : '切换到深色'"
+                  @click="$emit('toggleTheme')"
+                >
                   <n-icon size="18">
                     <MoonOutline v-if="!dark" />
                     <SunnyOutline v-else />
@@ -188,7 +207,15 @@ watch(
             </n-tooltip>
             <n-tooltip>
               <template #trigger>
-                <n-button quaternary circle tag="a" href="/docs" target="_blank">
+                <n-button
+                  quaternary
+                  circle
+                  tag="a"
+                  href="/docs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="打开接口文档"
+                >
                   <n-icon size="18"><BookOutline /></n-icon>
                 </n-button>
               </template>
@@ -199,7 +226,7 @@ watch(
       </div>
     </header>
 
-    <main class="content">
+    <main id="main-content" class="content" tabindex="-1">
       <RouterView v-slot="{ Component }">
         <transition name="fade" mode="out-in">
           <component :is="Component" />
@@ -207,7 +234,7 @@ watch(
       </RouterView>
     </main>
 
-    <n-drawer v-model:show="mobileMenuOpen" placement="left" :width="240" class="mobile-drawer">
+    <n-drawer id="mobile-nav" v-model:show="mobileMenuOpen" placement="left" :width="260" class="mobile-drawer">
       <n-drawer-content title="funflix" closable :native-scrollbar="false">
         <n-menu :value="activeKey" :options="drawerMenuOptions" :indent="16" />
       </n-drawer-content>
@@ -219,12 +246,29 @@ watch(
 .shell {
   min-height: 100%;
 }
+.skip-link {
+  position: fixed;
+  z-index: 100;
+  top: 8px;
+  left: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--n-color, #fff);
+  color: var(--n-text-color, #111);
+  text-decoration: none;
+  transform: translateY(-160%);
+  transition: transform 0.15s var(--ease);
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
 .navbar {
   position: sticky;
   top: 0;
   z-index: 10;
   height: 56px;
   border-bottom: 1px solid rgba(128, 128, 128, 0.14);
+  background: var(--nav-surface);
   backdrop-filter: blur(10px);
 }
 .navbar-inner {
@@ -274,6 +318,7 @@ watch(
   gap: 20px;
 }
 .nav-link {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -285,12 +330,30 @@ watch(
   color: inherit;
   transition: opacity 0.15s var(--ease);
 }
+.nav-link-dropdown {
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+}
 .nav-link:hover {
   opacity: 0.95;
 }
 .nav-link.active {
   opacity: 1;
   color: var(--n-primary-color, #6d5ef8);
+  font-weight: 600;
+}
+.nav-link.active::after {
+  position: absolute;
+  right: 0;
+  bottom: -18px;
+  left: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  content: '';
 }
 .nav-center {
   flex: 1;
@@ -325,6 +388,7 @@ watch(
   display: none;
 }
 .content {
+  min-width: 0;
   max-width: 1600px;
   margin: 0 auto;
   padding: 28px 24px 48px;
@@ -332,6 +396,13 @@ watch(
 
 /* 窄屏：横向导航链接与中间面包屑挤不下，收起来改走抽屉 */
 @media (max-width: 768px) {
+  .navbar-inner {
+    gap: 8px;
+    padding: 0 12px;
+  }
+  .nav-left {
+    gap: 0;
+  }
   .nav-links,
   .nav-center {
     display: none;

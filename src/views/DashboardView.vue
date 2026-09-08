@@ -209,22 +209,24 @@ const providerCheckRows = computed(() => {
         </n-grid>
 
         <n-card size="small" title="按网盘细分校验状态" class="mt">
-          <n-table :single-line="false" size="small">
-            <thead>
-              <tr>
-                <th>网盘</th>
-                <th v-for="b in PROVIDER_CHECK_BUCKETS" :key="b">
-                  {{ PROVIDER_CHECK_BUCKET_LABEL[b] }}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="row in providerCheckRows" :key="row.key">
-                <td>{{ row.label }}</td>
-                <td v-for="b in PROVIDER_CHECK_BUCKETS" :key="b">{{ row.buckets[b] ?? 0 }}</td>
-              </tr>
-            </tbody>
-          </n-table>
+          <div class="table-scroll">
+            <n-table :single-line="false" size="small">
+              <thead>
+                <tr>
+                  <th>网盘</th>
+                  <th v-for="b in PROVIDER_CHECK_BUCKETS" :key="b">
+                    {{ PROVIDER_CHECK_BUCKET_LABEL[b] }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in providerCheckRows" :key="row.key">
+                  <td>{{ row.label }}</td>
+                  <td v-for="b in PROVIDER_CHECK_BUCKETS" :key="b">{{ row.buckets[b] ?? 0 }}</td>
+                </tr>
+              </tbody>
+            </n-table>
+          </div>
         </n-card>
       </template>
     </n-spin>

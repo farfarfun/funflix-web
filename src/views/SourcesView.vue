@@ -327,7 +327,7 @@ onMounted(async () => {
 
     <n-alert v-if="error" type="error" class="mb">{{ error }}</n-alert>
 
-    <n-spin :show="loading">
+    <n-spin :show="loading" class="table-scroll">
       <n-empty v-if="!loading && allSources.length === 0" description="还没有采集源" class="empty">
         <template #extra>
           <n-button size="small" @click="showCreate = true">登记第一个</n-button>

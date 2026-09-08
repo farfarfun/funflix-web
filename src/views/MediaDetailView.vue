@@ -249,11 +249,28 @@ onUnmounted(() => {
     min-height: 0;
   }
   .hero-content {
-    flex-direction: column;
-    align-items: flex-start;
+    align-items: flex-end;
+    gap: 16px;
+    padding: 20px 16px;
   }
   .hero-poster {
-    width: 88px;
+    width: 92px;
+  }
+  .hero-title {
+    font-size: 22px;
+  }
+  :deep(.n-descriptions-table),
+  :deep(.n-descriptions-table tbody) {
+    display: block;
+    width: 100%;
+  }
+  :deep(.n-descriptions-table-row) {
+    display: grid;
+    grid-template-columns: 84px minmax(0, 1fr);
+  }
+  :deep(.n-descriptions-table-header),
+  :deep(.n-descriptions-table-content) {
+    min-width: 0;
   }
 }
 </style>

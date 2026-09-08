@@ -62,9 +62,11 @@ const broken = ref(false)
   box-shadow: var(--shadow-sm);
   transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease);
 }
-.poster-card:hover .poster {
-  transform: translateY(-4px) scale(1.015);
-  box-shadow: var(--shadow-lg);
+@media (hover: hover) {
+  .poster-card:hover .poster {
+    transform: translateY(-4px) scale(1.015);
+    box-shadow: var(--shadow-lg);
+  }
 }
 .poster-img {
   width: 100%;

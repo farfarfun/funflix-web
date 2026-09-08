@@ -102,4 +102,16 @@ const broken = ref(false)
   color: #18a058;
   opacity: 1;
 }
+
+@media (max-width: 480px) {
+  .row {
+    min-height: 64px;
+    padding: 8px 4px;
+  }
+  .meta {
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    white-space: normal;
+  }
+}
 </style>

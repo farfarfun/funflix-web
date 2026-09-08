@@ -79,11 +79,18 @@ const displayResources = computed(() => {
           type="button"
           class="sort-chip"
           :class="{ active: sortKey === 'quality' }"
+          :aria-pressed="sortKey === 'quality'"
           @click="toggleSort('quality')"
         >
           画质{{ sortArrow('quality') }}
         </button>
-        <button type="button" class="sort-chip" :class="{ active: sortKey === 'size' }" @click="toggleSort('size')">
+        <button
+          type="button"
+          class="sort-chip"
+          :class="{ active: sortKey === 'size' }"
+          :aria-pressed="sortKey === 'size'"
+          @click="toggleSort('size')"
+        >
           大小{{ sortArrow('size') }}
         </button>
       </div>
@@ -112,9 +119,9 @@ const displayResources = computed(() => {
                 打开
               </n-button>
               <n-button text type="primary" @click="copy(r.url, '链接')">复制</n-button>
-              <n-tag v-if="r.passcode" size="small" :bordered="false" @click="copy(r.passcode!, '提取码')">
-                码 {{ r.passcode }}
-              </n-tag>
+              <n-button v-if="r.passcode" text size="tiny" @click="copy(r.passcode!, '提取码')">
+                提取码 {{ r.passcode }}
+              </n-button>
             </n-space>
             <n-text v-if="r.title_raw" depth="3" class="raw-title" :title="r.title_raw">
               {{ r.title_raw }}

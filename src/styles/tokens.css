@@ -19,6 +19,8 @@
   --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12);
 
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --focus-ring: #6d5ef8;
+  --nav-surface: rgba(255, 255, 255, 0.88);
 
   /* 海报网格、详情页 hero 这类不走 n-card 的自绘区域用，浅色默认值 */
   --bg-canvas: #f2f3f6;
@@ -31,6 +33,7 @@
    因为海报网格/hero 渐变这些自绘区域不经过 naive-ui 组件，拿不到它的主题变量 */
 :root.dark {
   --bg-canvas: #0b0c10;
+  --nav-surface: rgba(11, 12, 16, 0.88);
   --scrim-strong: rgba(0, 0, 0, 0.88);
   --scrim-soft: rgba(0, 0, 0, 0.4);
   --poster-surface: rgba(255, 255, 255, 0.06);
@@ -41,7 +44,23 @@ body {
   height: 100%;
 }
 
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
+  margin: 0;
+  min-width: 320px;
   font-family:
     'Inter',
     -apple-system,
@@ -55,6 +74,36 @@ body {
   text-rendering: optimizeLegibility;
   background: var(--bg-canvas);
   transition: background 0.2s var(--ease);
+}
+
+#app {
+  min-height: 100%;
+}
+
+:where(a, button, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+:where(a, button) {
+  touch-action: manipulation;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 /* 细滚动条，跟随系统深浅色，避免默认滚动条在深色主题下刺眼 */
@@ -75,4 +124,40 @@ body {
 }
 *::-webkit-scrollbar-track {
   background: transparent;
+}
+
+@media (max-width: 600px) {
+  .n-pagination > .n-select,
+  .n-pagination-quick-jumper {
+    display: none !important;
+  }
+
+  .n-pagination {
+    --n-item-size: 44px !important;
+    --n-item-margin: 0 0 0 4px !important;
+    max-width: 100%;
+  }
+}
+
+@media (pointer: coarse) {
+  .n-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .n-input,
+  .n-base-selection-label {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

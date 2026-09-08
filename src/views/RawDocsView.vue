@@ -83,7 +83,7 @@ async function open(id: string) {
 
     <n-alert v-if="error" type="error" class="mt">{{ error }}</n-alert>
 
-    <n-spin :show="loading">
+    <n-spin :show="loading" class="table-scroll">
       <n-empty v-if="!loading && items.length === 0" description="没有原始文本" class="empty" />
       <n-table v-else :single-line="false" size="small" class="mt">
         <thead>

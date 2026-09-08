@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AppsOutline, GridOutline, ListOutline, SearchOutline } from '@vicons/ionicons5'
+import { AppsOutline, CloseCircleOutline, GridOutline, ListOutline, SearchOutline } from '@vicons/ionicons5'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -134,6 +134,23 @@ const hasActiveFilters = computed(
     provider.value !== null,
 )
 
+function clearFilters() {
+  applyingFromUrl = true
+  clearTimeout(timer)
+  debouncing.value = false
+  keyword.value = ''
+  mediaType.value = null
+  year.value = null
+  validOnly.value = false
+  provider.value = null
+  page.value = 1
+  void router.replace({ query: {} })
+  void refresh()
+  void nextTick(() => {
+    applyingFromUrl = false
+  })
+}
+
 // 输入框按键触发，要防抖；下拉与勾选是离散动作，立即生效
 watch([keyword, year], () => applyFilters(300))
 watch([mediaType, validOnly, provider], () => applyFilters(0))
@@ -169,9 +186,16 @@ onMounted(() => {
 
 <template>
   <div class="page">
+    <h1 class="sr-only">作品检索</h1>
     <div class="toolbar">
       <div class="toolbar-top">
-        <n-input v-model:value="keyword" clearable placeholder="搜索剧名，支持别名与简繁" class="search">
+        <n-input
+          v-model:value="keyword"
+          clearable
+          placeholder="搜索剧名，支持别名与简繁"
+          :input-props="{ 'aria-label': '搜索作品' }"
+          class="search"
+        >
           <template #prefix><n-icon :depth="3"><SearchOutline /></n-icon></template>
           <template v-if="debouncing" #suffix><n-spin :size="14" /></template>
         </n-input>
@@ -183,6 +207,8 @@ onMounted(() => {
                 size="small"
                 :type="viewMode === vm.mode ? 'primary' : 'default'"
                 :ghost="viewMode === vm.mode"
+                :aria-label="vm.label"
+                :aria-pressed="viewMode === vm.mode"
                 @click="viewMode = vm.mode"
               >
                 <n-icon :size="16"><component :is="vm.icon" /></n-icon>
@@ -193,9 +219,15 @@ onMounted(() => {
         </n-button-group>
       </div>
 
-      <div class="filters">
-        <div class="pills">
-          <button type="button" class="pill" :class="{ active: mediaType === null }" @click="selectType(null)">
+      <div class="filters" role="group" aria-label="作品筛选">
+        <div class="pills" role="group" aria-label="作品类型">
+          <button
+            type="button"
+            class="pill"
+            :class="{ active: mediaType === null }"
+            :aria-pressed="mediaType === null"
+            @click="selectType(null)"
+          >
             全部
           </button>
           <button
@@ -205,6 +237,7 @@ onMounted(() => {
             class="pill"
             :class="{ active: mediaType === t }"
             :style="mediaType === t ? { background: MEDIA_TYPE_COLOR[t], borderColor: MEDIA_TYPE_COLOR[t] } : {}"
+            :aria-pressed="mediaType === t"
             @click="selectType(t)"
           >
             {{ MEDIA_TYPE_LABEL[t] }}
@@ -218,6 +251,7 @@ onMounted(() => {
           :min="1888"
           :max="2100"
           placeholder="年份"
+          :input-props="{ 'aria-label': '上映年份' }"
           class="year-input"
         />
         <n-select
@@ -225,10 +259,15 @@ onMounted(() => {
           :options="toOptions(PROVIDER_LABEL)"
           clearable
           placeholder="全部网盘"
-          style="width: 150px"
+          aria-label="网盘来源"
+          class="provider-select"
         />
         <n-checkbox v-model:checked="validOnly">只看有可用资源</n-checkbox>
-        <n-text depth="3" class="total">共 {{ total }} 部</n-text>
+        <n-button v-if="hasActiveFilters" text size="small" class="clear-filters" @click="clearFilters">
+          <template #icon><n-icon><CloseCircleOutline /></n-icon></template>
+          清除筛选
+        </n-button>
+        <n-text depth="3" class="total" aria-live="polite">共 {{ total }} 部</n-text>
       </div>
     </div>
 
@@ -236,8 +275,21 @@ onMounted(() => {
 
     <!-- 首屏（还没有任何数据可显示）用骨架屏，比整页转圈更快出内容感；
          换页/改筛选时列表里已经有旧数据，走下面的 n-spin 蒙层就够了 -->
-    <div v-if="loading && items.length === 0 && !error" class="grid mt">
-      <n-skeleton v-for="i in SKELETON_COUNT" :key="i" class="skeleton-poster" :sharp="false" />
+    <div
+      v-if="loading && items.length === 0 && !error"
+      class="mt"
+      :class="viewMode === 'list' ? 'skeleton-list' : ['grid', viewMode === 'card-sm' ? 'grid-sm' : 'grid-lg']"
+    >
+      <template v-if="viewMode === 'list'">
+        <div v-for="i in SKELETON_COUNT" :key="i" class="skeleton-row">
+          <n-skeleton class="skeleton-thumb" :sharp="false" />
+          <div class="skeleton-lines">
+            <n-skeleton text width="42%" />
+            <n-skeleton text width="68%" />
+          </div>
+        </div>
+      </template>
+      <n-skeleton v-for="i in SKELETON_COUNT" v-else :key="i" class="skeleton-poster" :sharp="false" />
     </div>
 
     <n-spin v-else :show="loading">
@@ -329,6 +381,12 @@ onMounted(() => {
 .year-input {
   width: 110px;
 }
+.provider-select {
+  width: 150px;
+}
+.clear-filters {
+  flex: none;
+}
 .total {
   margin-left: auto;
 }
@@ -360,8 +418,67 @@ onMounted(() => {
   width: 100%;
   border-radius: var(--radius-md);
 }
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.skeleton-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 10px;
+}
+.skeleton-thumb {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+}
+.skeleton-lines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .pager {
   margin-top: 28px;
   justify-content: center;
+}
+
+@media (max-width: 480px) {
+  .toolbar-top {
+    align-items: stretch;
+  }
+  .search {
+    min-width: 0;
+  }
+  .filters {
+    gap: 10px;
+  }
+  .pills {
+    width: 100%;
+  }
+  .pill {
+    min-height: 40px;
+    padding-inline: 13px;
+  }
+  .year-input,
+  .provider-select {
+    flex: 1 1 130px;
+    width: auto;
+    min-width: 0;
+  }
+  .total {
+    margin-left: 0;
+  }
+  .grid-lg,
+  .grid-sm {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .pager {
+    margin-top: 20px;
+  }
 }
 </style>
