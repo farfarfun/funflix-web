@@ -17,7 +17,7 @@ const message = useMessage()
 const dialog = useDialog()
 
 const sourceType = ref<SourceType | null>(null)
-const enabledFilter = ref<'true' | 'false' | null>(null)
+const enabledFilter = ref<'true' | 'false' | null>('true')
 const enabledOptions: { label: string; value: 'true' | 'false' }[] = [
   { label: '已启用', value: 'true' },
   { label: '已停用', value: 'false' },
@@ -483,7 +483,7 @@ onMounted(async () => {
           v-model:value="enabledFilter"
           :options="enabledOptions"
           clearable
-          placeholder="全部状态"
+          placeholder="是否启用"
           style="width: 130px"
         />
         <n-text depth="3">共 {{ total }} 个</n-text>

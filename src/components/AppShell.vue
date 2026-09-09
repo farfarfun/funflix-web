@@ -10,6 +10,7 @@ import {
   MenuOutline,
   MoonOutline,
   SearchOutline,
+  ShieldCheckmarkOutline,
   SpeedometerOutline,
   SunnyOutline,
 } from '@vicons/ionicons5'
@@ -65,6 +66,7 @@ const GROUPS: { group: string; entries: Entry[] }[] = [
       { key: 'dashboard', label: '流水线大盘', icon: SpeedometerOutline },
       { key: 'sources', label: '采集源', icon: CloudUploadOutline },
       { key: 'raw', label: '原始文本', icon: DocumentTextOutline },
+      { key: 'providers', label: '网盘管理', icon: ShieldCheckmarkOutline },
       { key: 'resources', label: '网盘资源', icon: CloudDownloadOutline },
     ],
   },
@@ -82,8 +84,7 @@ const drawerMenuOptions: MenuOption[] = GROUPS.map((g) => ({
   })),
 }))
 
-// 桌面顶栏只留「作品检索」单独露出，其余 4 个运维页收进一个下拉——
-// 5 个目的地全摊平在顶栏会重新变回「后台导航条」的观感
+// 桌面顶栏只留「作品检索」单独露出，其余运维页收进一个下拉。
 const opsEntries = GROUPS.find((g) => g.group === '运维')?.entries ?? []
 const opsOptions: DropdownOption[] = opsEntries.map((e) => ({
   key: e.key,
@@ -237,6 +238,19 @@ watch(
       </RouterView>
     </main>
 
+    <footer class="site-footer">
+      <p>
+        本站内容均整理自互联网公开信息，仅提供检索与索引，不存储或上传资源文件。如有侵权，
+        <a
+          href="https://github.com/farfarfun/funflix/issues/new"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          联系删除
+        </a>。
+      </p>
+    </footer>
+
     <n-drawer id="mobile-nav" v-model:show="mobileMenuOpen" placement="left" :width="260" class="mobile-drawer">
       <n-drawer-content title="funflix" closable :native-scrollbar="false">
         <n-menu :value="activeKey" :options="drawerMenuOptions" :indent="16" />
@@ -247,7 +261,9 @@ watch(
 
 <style scoped>
 .shell {
-  min-height: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 .skip-link {
   position: fixed;
@@ -391,6 +407,8 @@ watch(
   display: none;
 }
 .content {
+  width: 100%;
+  flex: 1;
   min-width: 0;
   max-width: 1600px;
   margin: 0 auto;
@@ -398,6 +416,26 @@ watch(
 }
 .content:focus {
   outline: none;
+}
+.site-footer {
+  width: 100%;
+  border-top: 1px solid rgba(128, 128, 128, 0.14);
+}
+.site-footer p {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 16px 24px;
+  color: var(--n-text-color-3, #8a8f9d);
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+}
+.site-footer a {
+  color: inherit;
+  text-underline-offset: 2px;
+}
+.site-footer a:hover {
+  color: var(--n-primary-color, #6d5ef8);
 }
 
 /* 窄屏：横向导航链接与中间面包屑挤不下，收起来改走抽屉 */
@@ -418,6 +456,9 @@ watch(
   }
   .content {
     padding: 16px 16px 32px;
+  }
+  .site-footer p {
+    padding: 16px;
   }
 }
 .fade-enter-active,

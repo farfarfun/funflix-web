@@ -8,7 +8,7 @@ import {
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { api } from '@/api/client'
-import type { PipelineStats, Provider } from '@/api/types'
+import type { PipelineStats } from '@/api/types'
 import type { BreakdownRow } from '@/components/BreakdownList.vue'
 import BreakdownList from '@/components/BreakdownList.vue'
 import {
@@ -18,13 +18,9 @@ import {
   MEDIA_TYPE_LABEL,
   PARSE_STATUS_COLOR,
   PARSE_STATUS_LABEL,
-  PROVIDER_CHECK_BUCKET_LABEL,
   PROVIDER_COLOR,
   PROVIDER_LABEL,
 } from '@/utils/display'
-
-/** 「按网盘细分校验状态」表格的列顺序。 */
-const PROVIDER_CHECK_BUCKETS = ['total', 'valid', 'unchecked', 'invalid', 'other'] as const
 
 const stats = ref<PipelineStats | null>(null)
 const loading = ref(false)
@@ -81,19 +77,6 @@ const validRate = computed(() => {
   const checked = (by.valid ?? 0) + (by.invalid ?? 0) + (by.error ?? 0)
   if (checked === 0) return null
   return Math.round(((by.valid ?? 0) / checked) * 100)
-})
-
-/** 每个网盘各自的 总量/有效/未校验/失效/其他，按总量倒序。 */
-const providerCheckRows = computed(() => {
-  const by = stats.value?.resource_by_provider_check
-  if (!by) return []
-  return Object.entries(by)
-    .map(([key, buckets]) => ({
-      key,
-      label: PROVIDER_LABEL[key as Provider] ?? key,
-      buckets,
-    }))
-    .sort((a, b) => (b.buckets.total ?? 0) - (a.buckets.total ?? 0))
 })
 </script>
 
@@ -207,27 +190,6 @@ const providerCheckRows = computed(() => {
             </n-card>
           </n-gi>
         </n-grid>
-
-        <n-card size="small" title="按网盘细分校验状态" class="mt">
-          <div class="table-scroll">
-            <n-table :single-line="false" size="small">
-              <thead>
-                <tr>
-                  <th>网盘</th>
-                  <th v-for="b in PROVIDER_CHECK_BUCKETS" :key="b">
-                    {{ PROVIDER_CHECK_BUCKET_LABEL[b] }}
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="row in providerCheckRows" :key="row.key">
-                  <td>{{ row.label }}</td>
-                  <td v-for="b in PROVIDER_CHECK_BUCKETS" :key="b">{{ row.buckets[b] ?? 0 }}</td>
-                </tr>
-              </tbody>
-            </n-table>
-          </div>
-        </n-card>
       </template>
     </n-spin>
   </div>

@@ -8,6 +8,8 @@ import type {
   Page,
   ParseReport,
   PipelineStats,
+  Provider,
+  ProviderVerifyReport,
   RawDocument,
   RawDocumentSummary,
   Resource,
@@ -117,6 +119,9 @@ export const api = {
 
   // --- 资源 ---
   listResources: (params: Params) => request<Page<Resource>>('/resources', { params }),
+  checkableProviders: () => request<Provider[]>('/resources/providers/checkable'),
+  verifyProvider: (provider: Provider) =>
+    request<ProviderVerifyReport>(`/resources/providers/${provider}/verify`, { method: 'POST' }),
 
   // --- 统计 ---
   getStats: () => request<PipelineStats>('/stats'),

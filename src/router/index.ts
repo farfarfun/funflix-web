@@ -46,6 +46,12 @@ export const router = createRouter({
       meta: { title: '网盘资源', requiresAuth: true },
     },
     {
+      path: '/providers',
+      name: 'providers',
+      component: () => import('@/views/ProvidersView.vue'),
+      meta: { title: '网盘管理', requiresAuth: true },
+    },
+    {
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('@/views/DashboardView.vue'),

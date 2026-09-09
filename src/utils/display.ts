@@ -52,6 +52,7 @@ export const PROVIDER_LABEL: Record<Provider, string> = {
   pan123: '123云盘',
   mobile139: '移动云盘',
   guangya: '光雅网盘',
+  ctfile: '城通网盘',
   lanzou: '蓝奏云',
   tianyi: '天翼云盘',
   xunlei: '迅雷',
@@ -70,6 +71,7 @@ export const PROVIDER_COLOR: Record<Provider, string> = {
   pan123: '#00c48c',
   mobile139: '#0b8fff',
   guangya: '#8a2be2',
+  ctfile: '#16a085',
   lanzou: '#00c2a8',
   tianyi: '#d6336c',
   xunlei: '#2e8b57',
@@ -77,16 +79,6 @@ export const PROVIDER_COLOR: Record<Provider, string> = {
   ed2k: '#607d8b',
   other: '#9095a3',
 }
-
-/** 「按网盘细分校验状态」表格的列标签，措辞与 CHECK_STATUS_LABEL 保持一致
- * （unchecked/checking 合并展示为「未校验」）。 */
-export const PROVIDER_CHECK_BUCKET_LABEL = {
-  total: '总量',
-  valid: '有效',
-  unchecked: '未校验',
-  invalid: '失效',
-  other: '其他',
-} as const
 
 export const QUALITY_LABEL: Record<Quality, string> = {
   '4k': '4K',

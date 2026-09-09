@@ -20,6 +20,7 @@ export type Provider =
   | 'pan123'
   | 'mobile139'
   | 'guangya'
+  | 'ctfile'
   | 'lanzou'
   | 'tianyi'
   | 'xunlei'
@@ -72,6 +73,15 @@ export interface Resource {
   first_seen_at: string
   last_seen_at: string
   seen_count: number
+}
+
+export interface ProviderVerifyReport {
+  provider: Provider
+  claimed: number
+  succeeded: number
+  failed: number
+  reclaimed: number
+  abandoned: number
 }
 
 export interface MediaSummary {
