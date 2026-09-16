@@ -1,5 +1,5 @@
-// 反向代理到 funflix 后端（`funflix server start`）。只用内置 http/https，不加第三方依赖。
-// 存在的理由：funflix 自身没有 CORS 中间件，前端独立部署后必须走同源，
+// 反向代理到 funflix-api 后端（`funflix-api start`）。只用内置 http/https，不加第三方依赖。
+// 存在的理由：funflix-api 自身没有 CORS 中间件，前端独立部署后必须走同源，
 // 由这一层把 /api、/healthz 转发到真实后端，浏览器眼里全程只有一个源。
 import http from 'node:http'
 import https from 'node:https'

@@ -50,7 +50,7 @@ do_publish() {
 已发布 funflix-web ${version}。
 下一步：
     npm i -g funflix-web
-    funflix server start --host 127.0.0.1 --port 18810 &
+    funflix-api start --host 127.0.0.1 --port 18810 &
     funflix-web server start --backend http://127.0.0.1:18810
 EOF
 }

@@ -5,20 +5,21 @@
 | 组件 | 是什么 | 默认端口 |
 | --- | --- | --- |
 | `funflix-web`（本仓库，npm 包） | 静态托管前端 + 反代后端接口 | `8810` |
-| `funflix server start`（funflix 自带命令） | 纯后端接口 | `18810` |
+| `funflix-api start`（funflix-api 自带命令） | 纯后端接口 | `18810` |
 
 `funflix-web` 对外暴露的路径：
 
 | 路径 | 内容 |
 | --- | --- |
 | `/web` | 前端界面（Vue 3 单页应用），本机静态文件 |
-| `/api/v1`、`/healthz` | 反向代理到 `funflix server start` |
+| `/api/v1`、`/healthz` | 反向代理到 `funflix-api` |
 | `/` | 重定向到 `/web` |
 
-`funflix server start` 是 funflix 自带的独立命令，不需要任何包装就能跑；本仓库不碰它的源码，
-也不再有一个把前后端粘进同一个进程的 Python 包。之所以不直接在浏览器里跨域访问后端，
-是因为 funflix 没有 CORS 中间件——`funflix-web` 内置的反代把 `/api`、`/healthz` 转发到
-后端，浏览器眼里全程只有一个源，不用改 funflix 一行代码。
+`funflix-api start` 是 [funflix-api](https://github.com/farfarfun/funflix-api) 自带的独立命令，
+不需要任何包装就能跑；本仓库不碰它的源码，也不再有一个把前后端粘进同一个进程的 Python 包。
+之所以不直接在浏览器里跨域访问后端，是因为 funflix-api 没有 CORS 中间件——`funflix-web`
+内置的反代把 `/api`、`/healthz` 转发到后端，浏览器眼里全程只有一个源，不用改 funflix-api
+一行代码。
 
 ## 界面
 
@@ -40,8 +41,8 @@
 
 ```bash
 npm i -g funflix-web                                          # 装前端（私有 npm 仓库）
-uv pip install funflix                                        # 装后端（PyPI）
-funflix server start --host 127.0.0.1 --port 18810 &                  # 起后端
+uv pip install funflix-api                                    # 装后端（PyPI）
+funflix-api start --host 127.0.0.1 --port 18810 &                     # 起后端
 FUNFLIX_ADMIN_API_KEY=你的密钥 funflix-web server start --backend http://127.0.0.1:18810
 ```
 
@@ -55,7 +56,7 @@ FUNFLIX_ADMIN_API_KEY=你的密钥 funflix-web server start --backend http://127
 前端改动频繁时用 vite 的 HMR，接口交给真实后端：
 
 ```bash
-funflix server start --host 127.0.0.1 --port 18810    # 终端 A：后端
+funflix-api start --host 127.0.0.1 --port 18810       # 终端 A：后端
 pnpm dev                                               # 终端 B：5173，/api 代理到 18810
 ```
 
@@ -145,7 +146,7 @@ npm i -g funflix-web                  # 生产机上装（或指定版本 funfli
 scripts/setup.sh install 0.1.34       # worker/sync 用：把 funflix 精确版本装到 .run/prod-venv
 scripts/setup.sh start worker prod
 scripts/setup.sh start sync prod
-funflix server start --host 127.0.0.1 --port 18810 &
+funflix-api start --host 127.0.0.1 --port 18810 &
 funflix-web server start --backend http://127.0.0.1:18810
 ```
 
@@ -159,7 +160,7 @@ funflix-web server start --backend http://127.0.0.1:18810
 走 funflix 的 `AdminDep`，要求 `X-API-Key` 头，值是服务端的 `FUNFLIX_ADMIN_API_KEY`：
 
 ```bash
-FUNFLIX_ADMIN_API_KEY=你的密钥 funflix server start
+FUNFLIX_ADMIN_API_KEY=你的密钥 funflix-api start
 ```
 
 在界面左下角「管理密钥」里填入同一个值即可解锁写操作。没填时相关按钮会置灰
@@ -170,7 +171,7 @@ FUNFLIX_ADMIN_API_KEY=你的密钥 funflix server start
 
 ## 配置
 
-后端（`funflix server start`）配置继承自 funflix，走 `FUNFLIX_` 前缀的环境变量或 `.env`：
+后端（`funflix-api`）配置继承自 funflix，走 `FUNFLIX_` 前缀的环境变量或 `.env`：
 
 | 变量 | 说明 |
 | --- | --- |
@@ -193,7 +194,7 @@ FUNFLIX_ADMIN_API_KEY=你的密钥 funflix server start
 
 worker/sync 默认直连云端 Postgres，跟一直以来的行为一样。想改成查询一份
 本地 SQLite 镜像（省掉每次请求跨网络打远端；`worker` 逐行读写的采集/解析/
-校验 pipeline，是这个模式最该省的场景），需要显式给 `funflix server start`/`worker` 设置：
+校验 pipeline，是这个模式最该省的场景），需要显式给 `funflix-api`/`funflix worker` 设置：
 
 ```bash
 export FUNFLIX_DATABASE_URL="sqlite+aiosqlite:///${HOME}/.cache/farfarfun/funflix/funflix.db"
@@ -223,7 +224,7 @@ scripts/setup.sh start sync dev
   产物随 npm 包发布，不再打进任何 Python wheel
 - **前端服务进程**：Node 内置 `http`/`fs`/`zlib`，不加第三方依赖 —— 静态托管、gzip、
   反向代理、start/stop/restart 生命周期全部手写，端口不固定，`--port` 随时可改
-- **后端**：funflix 自带的 `funflix server start`（FastAPI + uvicorn），本仓库不包装、不修改
+- **后端**：独立的 `funflix-api`（FastAPI + uvicorn，依赖 funflix 提供的领域逻辑），本仓库不包装、不修改
 - **传输**：开了 gzip，并按文件类型给缓存策略 —— 首屏从 525KB 降到 163KB。
   `assets/` 下的文件名带内容 hash，给 `immutable` 永久缓存；`index.html` 给 `no-cache`，
   它是唯一记录「该加载哪些 hash 资源」的地方，缓存住的话重新部署永远不生效
@@ -232,4 +233,4 @@ scripts/setup.sh start sync dev
   浏览器报的错会跟真实原因（文件不存在）完全对不上
 - **同源反代**：`base: '/web/'` 是固定的 URL 前缀（写死在 `vite.config.ts`），
   跟监听端口无关；`funflix-web` 把 `/api`、`/healthz` 反代到后端，浏览器全程
-  只看到一个源，绕开 funflix 没有 CORS 中间件这件事，不需要改 funflix 源码
+  只看到一个源，绕开 funflix-api 没有 CORS 中间件这件事，不需要改 funflix-api 源码

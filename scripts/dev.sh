@@ -44,7 +44,7 @@ do_bootstrap() {
 开发环境就绪。接下来：
     scripts/setup.sh build              构建前端
     scripts/setup.sh start worker dev   起 worker
-    pnpm dev                            起前端（热重载，代理到本地 funflix server start）
+    pnpm dev                            起前端（热重载，代理到本地 funflix-api start）
 
 funflix 从 PyPI 按版本安装，不需要同级目录下的 funflix 检出。
 EOF

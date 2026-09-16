@@ -44,7 +44,7 @@ funflix-web 统一入口。
 说明：
   前端（funflix-web，Web 界面 + 反代）是独立发布的 npm 包，不再由本脚本管理进程，
   见 README.md：`npm i -g funflix-web && funflix-web server start`。
-  后端接口是 funflix 自带的 `funflix server start`，同样不需要本仓库包装，直接运行即可。
+  后端接口是独立的 `funflix-api start`（依赖 funflix），同样不需要本仓库包装，直接运行即可。
 
   start    后台启动，PID 与日志写在 .run/
   run      前台运行，Ctrl-C 直接停止
