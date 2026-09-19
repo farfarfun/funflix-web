@@ -67,13 +67,21 @@ service_command_for() {
 
   # 先 pull 后 push：一轮里先拿远端可能存在的新数据，再把本地这段时间的
   # 管理员写操作推回去，缩小（不能完全消除，这是上游自己的设计取舍）互相
-  # 覆盖的窗口。单条命令失败不影响循环继续，下一轮自然会重试。
+  # 覆盖的窗口。pull 或 push 失败就带上下文打日志并退出（非 0），不再
+  # `|| true` 吞掉继续循环——静默重试会让「已经坏了好几天」和「正常运行」
+  # 在 status 里看起来一样，必须让失败可见，由调用方 / supervisor 决定要不要重启。
   SERVICE_COMMAND=(bash -c '
     bin="$1"
     interval="${FUNFLIX_SYNC_INTERVAL_SECONDS:-300}"
     while true; do
-      "${bin}" sync pull || true
-      "${bin}" sync push || true
+      if ! "${bin}" sync pull; then
+        echo "error: sync pull 失败（bin=${bin}），退出服务" >&2
+        exit 1
+      fi
+      if ! "${bin}" sync push; then
+        echo "error: sync push 失败（bin=${bin}），退出服务" >&2
+        exit 1
+      fi
       sleep "${interval}"
     done
   ' _ "${bin}")

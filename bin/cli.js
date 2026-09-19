@@ -33,10 +33,10 @@ const USAGE = `用法：funflix-web <命令> [选项]
   --config <path>     配置文件（.json/.toml/.env），默认 ${defaultConfigPath()}
   --host <host>        监听地址，默认 127.0.0.1
   --port <port>        监听端口，默认 8810
-  --backend <url>      后端地址，默认配置文件 backend 或 $FUNFLIX_API_BASE_URL 或 http://127.0.0.1:18810
+  --backend <url>      后端地址，默认 $FUNFLIX_API_BASE_URL 或配置文件 backend 或 http://127.0.0.1:18810
   --static-dir <dir>   前端产物目录，默认包内 dist/
 
-显式 flag 会覆盖配置文件里的同名字段；配置文件缺省字段则使用命令内置默认值。`
+优先级：命令行参数 > 环境变量（仅 backend 有对应的 FUNFLIX_API_BASE_URL）> 配置文件 > 命令内置默认值。`
 
 function parseOptionArgs(argv) {
   const opts = {}
@@ -66,14 +66,19 @@ function parseOptionArgs(argv) {
 }
 
 // 配置文件字段 -> resolve() 用的字段名；CLI flag 已经用的是后者，这里做个映射。
-function resolveOpts(cliOpts) {
+//
+// 优先级必须是 CLI 参数 > 环境变量 > 配置文件 > 代码默认值（组织规范 §9.3）。
+// backend 是唯一有对应环境变量（FUNFLIX_API_BASE_URL）的字段，所以环境变量
+// 必须在这里、也就是配置文件之前被考虑，不能留到 server 层再兜底 ——
+// 那样配置文件写了 backend 就会盖过环境变量，顺序反了。
+export function resolveOpts(cliOpts) {
   const configPath = cliOpts.config ?? defaultConfigPath()
   const fileConfig = loadConfig(configPath, Boolean(cliOpts.config))
 
   return {
     host: cliOpts.host ?? fileConfig.host,
     port: cliOpts.port ?? fileConfig.port,
-    backendBaseUrl: cliOpts.backendBaseUrl ?? fileConfig.backend,
+    backendBaseUrl: cliOpts.backendBaseUrl ?? process.env.FUNFLIX_API_BASE_URL ?? fileConfig.backend,
     staticDir: cliOpts.staticDir ?? fileConfig.staticDir,
   }
 }
@@ -162,7 +167,7 @@ async function main() {
         try {
           await stop()
         } catch (err) {
-          throw new Error(`卸载中断：停止运行中的 server 失败 —— ${err.message}`)
+          throw new Error(`卸载中断：停止运行中的 server 失败 —— ${err.message}`, { cause: err })
         }
         console.log(`卸载 ${PKG.name} ...`)
         npmGlobal(['uninstall', '-g', PKG.name])
@@ -179,4 +184,7 @@ async function main() {
   }
 }
 
-main()
+// 只有直接执行本文件时才跑 CLI 逻辑；被测试等场景 import 时不应触发 process.exit。
+if (import.meta.url === `file://${process.argv[1]}`) {
+  main()
+}

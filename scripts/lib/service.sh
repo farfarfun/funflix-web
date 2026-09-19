@@ -73,7 +73,9 @@ with_lock() {
     "$@"
     return
   }
-  eval "exec ${LOCK_FD}>\"\${lock_file}\""
+  # 禁用 eval：bash 不允许在重定向的描述符位置做变量展开，所以这里跟下面
+  # do_start 里的 9>&- 一样，必须写字面量 9，而不是 eval 拼接 ${LOCK_FD}。
+  exec 9>"${lock_file}"
   flock -w 10 "${LOCK_FD}" || die "${SERVICE_NAME} ${env}: 另一个生命周期操作正在进行"
   "$@"
 }

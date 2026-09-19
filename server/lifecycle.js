@@ -90,7 +90,10 @@ function tailLog(lines = 20) {
 export async function start(opts = {}) {
   const host = opts.host ?? '127.0.0.1'
   const port = opts.port ?? 8810
-  const backendBaseUrl = opts.backendBaseUrl ?? process.env.FUNFLIX_API_BASE_URL ?? 'http://127.0.0.1:18810'
+  // 环境变量已经在 bin/cli.js 的 resolveOpts() 里按 CLI > 环境变量 > 配置文件
+  // 的顺序并入 opts.backendBaseUrl，这里只补最后一档代码默认值，不能再单独
+  // 读一遍 process.env——那会让配置文件的值意外盖过环境变量。
+  const backendBaseUrl = opts.backendBaseUrl ?? 'http://127.0.0.1:18810'
   const staticDir = opts.staticDir
 
   const existingPid = readPid()
@@ -161,7 +164,7 @@ export async function restart(opts = {}) {
   try {
     await stop()
   } catch (err) {
-    throw new Error(`restart 中断：停止旧进程失败 —— ${err.message}`)
+    throw new Error(`restart 中断：停止旧进程失败 —— ${err.message}`, { cause: err })
   }
   return start(opts)
 }
