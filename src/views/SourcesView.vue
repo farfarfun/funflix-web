@@ -178,13 +178,23 @@ const partlySelected = computed(
 
 function toggleSelected(id: string, checked: boolean): void {
   const ids = new Set(selectedIds.value)
-  checked ? ids.add(id) : ids.delete(id)
+  if (checked) {
+    ids.add(id)
+  } else {
+    ids.delete(id)
+  }
   selectedIds.value = [...ids]
 }
 
 function toggleAll(checked: boolean): void {
   const ids = new Set(selectedIds.value)
-  for (const source of pagedItems.value) checked ? ids.add(source.id) : ids.delete(source.id)
+  for (const source of pagedItems.value) {
+    if (checked) {
+      ids.add(source.id)
+    } else {
+      ids.delete(source.id)
+    }
+  }
   selectedIds.value = [...ids]
 }
 

@@ -4,6 +4,9 @@
   "description": "funflix 的 Web 界面：静态托管 + 反代后端接口，start/stop/restart/status 一个命令搞定",
   "type": "module",
   "packageManager": "pnpm@12.1.0",
+  "engines": {
+    "node": ">=20"
+  },
   "bin": {
     "funflix-web": "bin/cli.js"
   },
@@ -18,7 +21,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "lint": "eslint . --fix"
   },
   "dependencies": {
     "@vicons/ionicons5": "^0.13.0",
@@ -27,11 +32,18 @@
     "vue-router": "^5.2.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^26.3.0",
     "@vitejs/plugin-vue": "^6.0.8",
+    "@vue/eslint-config-typescript": "^14.9.0",
+    "eslint": "^10.10.0",
+    "eslint-plugin-vue": "^10.11.0",
+    "globals": "^17.12.0",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.70.0",
     "unplugin-vue-components": "^32.1.0",
     "vite": "^8.2.2",
+    "vitest": "^5.0.1",
     "vue-tsc": "^3.3.11"
   }
 }

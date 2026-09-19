@@ -87,14 +87,22 @@ const partlySelected = computed(
 
 function toggleSelected(provider: Provider, checked: boolean): void {
   const selected = new Set(selectedProviders.value)
-  checked ? selected.add(provider) : selected.delete(provider)
+  if (checked) {
+    selected.add(provider)
+  } else {
+    selected.delete(provider)
+  }
   selectedProviders.value = [...selected]
 }
 
 function toggleAll(checked: boolean): void {
   const selected = new Set(selectedProviders.value)
   for (const row of selectableRows.value) {
-    checked ? selected.add(row.provider) : selected.delete(row.provider)
+    if (checked) {
+      selected.add(row.provider)
+    } else {
+      selected.delete(row.provider)
+    }
   }
   selectedProviders.value = [...selected]
 }
