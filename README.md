@@ -64,6 +64,13 @@ pnpm dev                                               # 终端 B：5173，/api 
 与 `/healthz` 代理到 `FUNFLIX_API_BASE_URL`（默认 `http://127.0.0.1:18810`），
 所以不会有跨域问题。
 
+前端自身的测试与 lint：
+
+```bash
+pnpm test    # vitest run —— server/、bin/cli.js、src/utils 等纯逻辑的用例
+pnpm lint    # eslint . --fix
+```
+
 worker / sync 这两个长期运行的后台任务继续由本仓库的 bash 脚本管理（历史遗留，
 与前端拆分无关）：
 
@@ -234,3 +241,15 @@ scripts/setup.sh start sync dev
 - **同源反代**：`base: '/web/'` 是固定的 URL 前缀（写死在 `vite.config.ts`），
   跟监听端口无关；`funflix-web` 把 `/api`、`/healthz` 反代到后端，浏览器全程
   只看到一个源，绕开 funflix-api 没有 CORS 中间件这件事，不需要改 funflix-api 源码
+
+---
+
+## 关于 farfarfun
+
+[farfarfun](https://github.com/farfarfun) 是一个专注于实用工具库的开源组织，
+涵盖云存储、数据处理、AI、多媒体与开发工具链等方向。
+
+- 🏠 组织主页：<https://github.com/farfarfun>
+- 📧 联系：farfarfun@qq.com
+
+本项目基于 [MIT](LICENSE) 协议开源。
