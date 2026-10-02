@@ -15,12 +15,12 @@ import {
   SunnyOutline,
 } from '@vicons/ionicons5'
 import type { DropdownOption, MenuOption } from 'naive-ui'
-import { NIcon } from 'naive-ui'
+import { NIcon, useMessage } from 'naive-ui'
 import type { Component } from 'vue'
 import { computed, h, nextTick, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
-import { currentUser, isAuthenticated, logout } from '@/api/auth'
+import { authError, currentUser, isAuthenticated, logout } from '@/api/auth'
 import { pageHeading } from '@/composables/usePageHeading'
 
 defineProps<{ dark: boolean }>()
@@ -28,6 +28,13 @@ defineEmits<{ toggleTheme: [] }>()
 
 const route = useRoute()
 const router = useRouter()
+const message = useMessage()
+
+// 登录态探测（fetchMe）遇到网络故障 / 后端 500 时不会悄悄把人判成未登录，
+// 而是落到这里——用 toast 把「服务暂不可达」和「确实没登录」区分开给用户看。
+watch(authError, (err) => {
+  if (err) message.error(`登录状态检查失败：${err.message}`)
+})
 
 // --- 移动端导航：窄屏下横向导航挤不下，改成汉堡按钮开抽屉 ---
 const mobileMenuOpen = ref(false)
@@ -48,8 +55,8 @@ function link(name: string, label: string) {
 }
 
 // 网盘资源放在「运维」而不是「发现」：它是按链接维度的全量清单，
-// 后端要求管理密钥才能读，用途是排查「某个网盘是不是大面积失效了」，
-// 而不是给使用者浏览内容 —— 那条路径是作品检索。
+// 后端要求登录才能读（AdminDep 校验会话 cookie），用途是排查「某个网盘是不是
+// 大面积失效了」，而不是给使用者浏览内容 —— 那条路径是作品检索。
 interface Entry {
   key: string
   label: string

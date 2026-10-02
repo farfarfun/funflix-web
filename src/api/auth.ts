@@ -8,7 +8,7 @@
 
 import { computed, ref } from 'vue'
 
-import { api, setUnauthorizedHandler } from './client'
+import { ApiError, api, setUnauthorizedHandler } from './client'
 import type { User } from './types'
 
 export const currentUser = ref<User | null>(null)
@@ -21,6 +21,13 @@ export const authReady = ref(false)
 
 export const isAuthenticated = computed(() => currentUser.value !== null)
 
+/**
+ * 最近一次 `fetchMe()` 遇到的非 401 故障（网络错误、后端 500 等）。
+ * 401 代表「明确未登录」，不算故障，会清空这里。界面可据此区分
+ * 「真的没登录」与「服务暂时不可达」，不要把后者也当成前者处理。
+ */
+export const authError = ref<Error | null>(null)
+
 let inflight: Promise<void> | null = null
 
 /** 拉一次当前登录用户，写入 `currentUser`。同一时间只发一次请求。 */
@@ -30,9 +37,18 @@ export function fetchMe(): Promise<void> {
     .me()
     .then((user) => {
       currentUser.value = user
+      authError.value = null
     })
-    .catch(() => {
-      currentUser.value = null
+    .catch((err: unknown) => {
+      if (err instanceof ApiError && err.status === 401) {
+        // 明确未认证：清掉本地镜像的登录态，这是正常的「未登录」分支。
+        currentUser.value = null
+        authError.value = null
+        return
+      }
+      // 网络故障 / 后端 500 等：不是「未登录」，不能悄悄把人退登录态。
+      // 保留错误供调用方（路由守卫、界面）判断与展示，不静默吞掉。
+      authError.value = err instanceof Error ? err : new Error(String(err))
     })
     .finally(() => {
       authReady.value = true

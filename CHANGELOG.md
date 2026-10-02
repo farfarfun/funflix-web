@@ -7,6 +7,26 @@
 
 ## [Unreleased]
 
+### 修复
+- README「管理密钥」一节改为准确描述当前的用户名/密码登录 + httpOnly cookie
+  会话（`src/api/auth.ts`、`src/api/client.ts` 的实际实现），不再声称写操作依赖
+  `FUNFLIX_ADMIN_API_KEY` 且密钥存在浏览器 `localStorage`——那是改造前的旧模型，
+  当前前端代码既不读取也不发送这个头；同步修正 `src/components/AppShell.vue`
+  里引用旧模型的注释
+- `fetchMe()` 不再把所有失败一律当成「未登录」：只有明确的 401 才清空登录态，
+  网络故障 / 后端 500 保留到新增的 `authError`，由 `AppShell.vue` 用 toast 提示
+  「登录状态检查失败」，不静默吞掉也不误判成未登录（组织规范 §8.2）
+- `.gitignore` 补充 `*.rar`、`.idea/`、`.vscode/`（组织规范 §10）
+
+### 新增
+- 新增 `server/proxy.js`、`server/static.js`、`server/lifecycle.js` 的测试覆盖：
+  代理层连接失败时的 502、静态文件路径穿越防护与 assets/index 回退规则、
+  重复启动检测、陈旧 PID 文件清理、空闲时 `stop()`、真实进程的优雅停止、
+  `status()` 的 running/stale/stopped 三态
+- 新增 `src/api/auth.test.ts`，覆盖 `fetchMe()` 的 401 / 网络故障两种错误分类
+
+## [1.0.2] - 2026-09-21
+
 ### 新增
 - 补充组织规范要求的 `pnpm test`（vitest）/ `pnpm lint`（eslint）脚本与初始测试用例
   （`server/config.js`、`bin/cli.js` 的配置优先级、`src/utils/display.ts`）
@@ -23,6 +43,9 @@
   改为记录上下文日志并以非 0 退出码结束进程，让失败对 supervisor / 调用方可见
 - 两处捕获异常后重新抛出的地方补上 `cause`，保留原始错误链（`bin/cli.js` 的
   `uninstall`、`server/lifecycle.js` 的 `restart`）
+
+### 变更
+- 仅版本号从 `0.1.31` 跳到 `1.0.2`，标记为稳定版发布，无额外代码改动
 
 ## [0.1.31] - 2026-09-16
 
@@ -206,6 +229,7 @@
 - 首个可用版本：基于 FastAPI + Vue 的 Web 服务，媒体管理大盘、资源展示，
   以及生产发布工具链
 
+[1.0.2]: https://github.com/farfarfun/funflix-web/releases/tag/v1.0.2
 [0.1.31]: https://github.com/farfarfun/funflix-web/releases/tag/v0.1.31
 [0.1.30]: https://github.com/farfarfun/funflix-web/releases/tag/v0.1.30
 [0.1.28]: https://github.com/farfarfun/funflix-web/releases/tag/v0.1.28
