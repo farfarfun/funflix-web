@@ -8,6 +8,15 @@
 ## [Unreleased]
 
 ### 变更
+- **npm 包名加上 `@farfarfun` scope：`funflix-web` → `@farfarfun/funflix-web`**。
+  CLI 的命令名不变，还是 `funflix-web`（`bin` 字段与包名无关）。两处连带改动：
+  `bin/cli.js` 的 `npmGlobal` 给 npm 显式带上 `--@farfarfun:registry=<私有仓库>`
+  —— 加了 scope 之后裸跑 `npm install -g` 会去默认 registry 找，报 404，
+  而 `upgrade` / `rollback` 不该依赖目标机器上配好了 `.npmrc`；用
+  `--@scope:registry=` 而不是 `--registry=` 是为了不把依赖也一起改道。
+  首次安装仍需先 `npm config set @farfarfun:registry ...`（README 已写）。
+  另外带 scope 的包 `npm pack` 出来的文件名变成 `farfarfun-funflix-web-*.tgz`，
+  README 里本地装包那条命令的通配符跟着改了。
 - **列表与详情的主体从 media 改成 work（一部剧）**，季降为子层：`MediaListView.vue`
   / `MediaListRow.vue` / `PosterCard.vue` 改打 `GET /works`，搜「大主宰」从几百条
   同名行变成一条；`MediaDetailView.vue` 的资源按季折叠展示（`n-collapse accordion`，

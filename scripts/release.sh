@@ -2,11 +2,11 @@
 # 发布与安装 —— 包级动作，不属于任何单个服务。
 #
 # 两件不相关的事，放在一起只是因为都不属于任何单个服务：
-#   publish  构建前端并发布 funflix-web 这个 npm 包到私有仓库
+#   publish  构建前端并发布 @farfarfun/funflix-web 这个 npm 包到私有仓库
 #   install  给 worker/sync 两个 bash 生命周期服务装 funflix 本身（精确版本）
 #
 # 前端（funflix-web）已经不是本仓库的产出物之一了——本仓库根目录本身就是它的
-# npm 包源码；用户自己 `npm i -g funflix-web` 装、`funflix-web server start`
+# npm 包源码；用户自己 `npm i -g @farfarfun/funflix-web` 装、`funflix-web server start`
 # 起，不走这里的 install。
 set -euo pipefail
 
@@ -47,9 +47,9 @@ do_publish() {
 
   cat <<EOF
 
-已发布 funflix-web ${version}。
+已发布 @farfarfun/funflix-web ${version}。
 下一步：
-    npm i -g funflix-web
+    npm i -g @farfarfun/funflix-web
     funflix-api start --host 127.0.0.1 --port 18810 &
     funflix-web server start --backend http://127.0.0.1:18810
 EOF

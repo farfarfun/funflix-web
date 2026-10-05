@@ -4,7 +4,7 @@
 
 | 组件 | 是什么 | 默认端口 |
 | --- | --- | --- |
-| `funflix-web`（本仓库，npm 包） | 静态托管前端 + 反代后端接口 | `8810` |
+| `@farfarfun/funflix-web`（本仓库，npm 包） | 静态托管前端 + 反代后端接口 | `8810` |
 | `funflix-api start`（funflix-api 自带命令） | 纯后端接口 | `18810` |
 
 `funflix-web` 对外暴露的路径：
@@ -40,13 +40,23 @@
 ## 快速开始
 
 ```bash
-npm i -g funflix-web                                          # 装前端（私有 npm 仓库）
+npm i -g @farfarfun/funflix-web                               # 装前端（私有 npm 仓库，见下）
 uv pip install funflix-api                                    # 装后端（PyPI）
 funflix-api start --host 127.0.0.1 --port 18810 &              # 起后端
 funflix-web server start --backend http://127.0.0.1:18810      # 起前端
 ```
 
 打开 `http://127.0.0.1:8810/web`。
+
+包名带 `@farfarfun` scope，而它发布在私有仓库上，所以装之前要先把这个 scope
+指过去（只需一次，不影响其他包从公共 registry 装）：
+
+```bash
+npm config set @farfarfun:registry https://farfarfun-cn-hangzhou.devops.aliyuncs.com/packages/api/protocol/npm/funnpm/
+```
+
+装好之后 `funflix-web upgrade` / `rollback` 自己会带上这个映射，不依赖本地
+`.npmrc`（见 `bin/cli.js` 的 `npmGlobal`）。
 
 没构建前端也能装：`funflix-web` 会检测到 `dist/` 缺失并返回明确的构建提示，
 而不是一个没头没脑的 404（发布到 npm 的包本身已带构建产物，这条只影响从源码跑的场景）。
@@ -96,8 +106,8 @@ funbuild install
 ```
 
 它会：装依赖 → `pnpm build` → 打成 tgz → `npm install -g` 装这个 tgz → 删掉 tgz。
-装出来是一份真实的全局 CLI（`npm ls -g funflix-web` 看不到软链指回本仓库），
-跟 `npm i -g funflix-web` 装发布版是同一种形态，只是包来自本地构建而不是私有 npm 仓库。
+装出来是一份真实的全局 CLI（`npm ls -g @farfarfun/funflix-web` 看不到软链指回本仓库），
+跟 `npm i -g @farfarfun/funflix-web` 装发布版是同一种形态，只是包来自本地构建而不是私有 npm 仓库。
 装完直接用 `funflix-web server status` 验证。
 
 没有 `funbuild` 就手动走同样的步骤：
@@ -105,8 +115,9 @@ funbuild install
 ```bash
 pnpm install && pnpm build
 npm pack
-npm install -g ./funflix-web-*.tgz   # 不要用 npm install -g .——那会装成软链指回本仓库，
-                                      # 绕开 package.json 的 files 字段，验证不出真实发布产物
+npm install -g ./farfarfun-funflix-web-*.tgz   # 带 scope 的包 pack 出来是这个文件名
+                                                # 不要用 npm install -g .——那会装成软链指回本仓库，
+                                                # 绕开 package.json 的 files 字段，验证不出真实发布产物
 ```
 
 ## funflix-web 命令
@@ -149,7 +160,7 @@ SIGKILL**——强杀是调用方的策略决定，命令本身不替你做这�
 
 ```bash
 scripts/setup.sh publish              # 构建前端 → 发布 npm 包到私有仓库
-npm i -g funflix-web                  # 生产机上装（或指定版本 funflix-web@x.y.z）
+npm i -g @farfarfun/funflix-web       # 生产机上装（或指定版本 @farfarfun/funflix-web@x.y.z）
 scripts/setup.sh install 0.1.34       # worker/sync 用：把 funflix 精确版本装到 .run/prod-venv
 scripts/setup.sh start worker prod
 scripts/setup.sh start sync prod
@@ -157,7 +168,7 @@ funflix-api start --host 127.0.0.1 --port 18810 &
 funflix-web server start --backend http://127.0.0.1:18810
 ```
 
-`funflix-web` 发布到私有 npm 仓库（`package.json` 的 `publishConfig.registry`），
+`@farfarfun/funflix-web` 发布到私有 npm 仓库（`package.json` 的 `publishConfig.registry`），
 不再发布到公开 PyPI——之前发布过的 0.1.4~0.1.6 是历史遗留的 Python 包，仍留在公开 PyPI
 上不动，只是不会再有新版本。
 

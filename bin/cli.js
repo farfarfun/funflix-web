@@ -84,7 +84,13 @@ export function resolveOpts(cliOpts) {
 }
 
 function npmGlobal(args) {
-  const result = spawnSync('npm', args, { stdio: 'inherit' })
+  // 包名带 scope（`@farfarfun/...`），而它发布在私有仓库上：不把 scope 映射
+  // 显式传给 npm，`upgrade` / `rollback` 会去默认 registry 上找，报 404。
+  // 用 `--@scope:registry=` 而不是 `--registry=`：后者会把依赖也一起改道。
+  const scope = PKG.name.startsWith('@') ? PKG.name.split('/')[0] : null
+  const registry = PKG.publishConfig?.registry
+  const scoped = scope && registry ? [...args, `--${scope}:registry=${registry}`] : args
+  const result = spawnSync('npm', scoped, { stdio: 'inherit' })
   if (result.status !== 0) {
     throw new Error(`npm ${args.join(' ')} 失败（exit ${result.status}）`)
   }
