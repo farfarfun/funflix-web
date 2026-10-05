@@ -7,6 +7,22 @@
 
 ## [Unreleased]
 
+### 变更
+- **列表与详情的主体从 media 改成 work（一部剧）**，季降为子层：`MediaListView.vue`
+  / `MediaListRow.vue` / `PosterCard.vue` 改打 `GET /works`，搜「大主宰」从几百条
+  同名行变成一条；`MediaDetailView.vue` 的资源按季折叠展示（`n-collapse accordion`，
+  一次只展开一季 —— 多季各带几十条资源，全展开要渲染几百行表格），单季作品
+  不套季的壳，季号 0 渲染成「正片」而不是「第 0 季」。后端每季最多返回 50 条，
+  被截断时显式提示真实总数，不让人以为这就是全部
+- 筛选栏新增 `book` / `comic` / `other` 三个非影视类型，淡一档虚线显示以区分 ——
+  它们默认不进搜索结果，必须显式选中才看得到；原来的「全部」胶囊因此改叫
+  「全部影视」。路由路径 `/media/:id` 保持不变（`:id` 现在是 work.id），
+  只为不废掉已经发出去的链接
+- 配置与状态目录从 `~/farfarfun/funflix/web/` 改为 `~/.farfarfun/funflix/web/`，
+  与组织统一的 `~/.farfarfun/<包名>/` 约定对齐（`server/config.js`、
+  `server/lifecycle.js`、`scripts/lib/db.sh` 里的本地库路径同步改为
+  `~/.farfarfun/funflix/funflix.db`）
+
 ### 修复
 - README「管理密钥」一节改为准确描述当前的用户名/密码登录 + httpOnly cookie
   会话（`src/api/auth.ts`、`src/api/client.ts` 的实际实现），不再声称写操作依赖

@@ -14,7 +14,7 @@ const STOP_POLL_MS = 200
 const CLI_PATH = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'bin', 'cli.js')
 
 function stateDir() {
-  const dir = process.env.FUNFLIX_WEB_STATE_DIR ?? path.join(os.homedir(), 'farfarfun', 'funflix', 'web')
+  const dir = process.env.FUNFLIX_WEB_STATE_DIR ?? path.join(os.homedir(), '.farfarfun', 'funflix', 'web')
   mkdirSync(dir, { recursive: true })
   return dir
 }

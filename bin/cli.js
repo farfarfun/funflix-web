@@ -18,7 +18,7 @@ const PKG = JSON.parse(readFileSync(path.join(PKG_DIR, 'package.json'), 'utf8'))
 const USAGE = `用法：funflix-web <命令> [选项]
 
 运行时（server 组）：
-  funflix-web server start    [选项]   后台运行，PID/日志见 ~/farfarfun/funflix/web/
+  funflix-web server start    [选项]   后台运行，PID/日志见 ~/.farfarfun/funflix/web/
   funflix-web server stop              停止后台进程（SIGTERM，等待超时不会自动强杀）
   funflix-web server restart  [选项]   stop + start
   funflix-web server status            查看运行状态与版本

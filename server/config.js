@@ -6,7 +6,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 export function defaultConfigPath() {
-  return path.join(os.homedir(), 'farfarfun', 'funflix', 'web', 'config.toml')
+  return path.join(os.homedir(), '.farfarfun', 'funflix', 'web', 'config.toml')
 }
 
 function pick(raw) {

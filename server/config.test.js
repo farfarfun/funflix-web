@@ -5,8 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { defaultConfigPath, loadConfig } from './config.js'
 
 describe('defaultConfigPath', () => {
-  it('默认使用 ~/farfarfun/funflix/web/config.toml', () => {
-    expect(defaultConfigPath()).toBe(path.join(os.homedir(), 'farfarfun', 'funflix', 'web', 'config.toml'))
+  it('默认使用 ~/.farfarfun/funflix/web/config.toml', () => {
+    expect(defaultConfigPath()).toBe(path.join(os.homedir(), '.farfarfun', 'funflix', 'web', 'config.toml'))
   })
 })
 
