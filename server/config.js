@@ -6,8 +6,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 export function defaultConfigPath() {
-  const configHome = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), '.config')
-  return path.join(configHome, 'farfarfun', 'funflix-web', 'config.toml')
+  return path.join(os.homedir(), 'farfarfun', 'funflix', 'web', 'config.toml')
 }
 
 function pick(raw) {

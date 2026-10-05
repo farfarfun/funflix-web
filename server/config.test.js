@@ -5,9 +5,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { defaultConfigPath, loadConfig } from './config.js'
 
 describe('defaultConfigPath', () => {
-  it('落在 XDG_CONFIG_HOME（未设置时回退 ~/.config）下的 farfarfun/funflix-web/config.toml', () => {
-    const p = defaultConfigPath()
-    expect(p.endsWith(path.join('farfarfun', 'funflix-web', 'config.toml'))).toBe(true)
+  it('默认使用 ~/farfarfun/funflix/web/config.toml', () => {
+    expect(defaultConfigPath()).toBe(path.join(os.homedir(), 'farfarfun', 'funflix', 'web', 'config.toml'))
   })
 })
 

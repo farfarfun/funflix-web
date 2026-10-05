@@ -114,7 +114,7 @@ npm install -g ./funflix-web-*.tgz   # 不要用 npm install -g .——那会装
 命令分两组：`server` 管运行时生命周期，顶层命令管 CLI 自身的包版本。
 
 ```bash
-funflix-web server start    [选项]   # 后台运行，PID/日志见 ~/.cache/farfarfun/funflix-web/run/
+funflix-web server start    [选项]   # 后台运行，PID/日志见 ~/farfarfun/funflix/web/
 funflix-web server stop              # 优雅停止（SIGTERM，等待超时不会自动 SIGKILL）
 funflix-web server restart  [选项]   # stop + start
 funflix-web server status            # 查看运行状态与已安装版本
@@ -129,7 +129,7 @@ funflix-web uninstall          # 先停止正在运行的 server，再卸载
 
 | 选项 | 默认值 |
 | --- | --- |
-| `--config <path>` | `${XDG_CONFIG_HOME:-~/.config}/farfarfun/funflix-web/config.toml`（`.json`/`.toml`/`.env` 按扩展名选解析器） |
+| `--config <path>` | `~/farfarfun/funflix/web/config.toml`（`.json`/`.toml`/`.env` 按扩展名选解析器） |
 | `--host` | `127.0.0.1`（或配置文件里的 `host`） |
 | `--port` | `8810`（或配置文件里的 `port`） |
 | `--backend` | `$FUNFLIX_API_BASE_URL`、配置文件里的 `backend`，或 `http://127.0.0.1:18810` |
@@ -139,7 +139,7 @@ funflix-web uninstall          # 先停止正在运行的 server，再卸载
 显式传 `--config` 而文件不存在会直接报错；不传时用默认路径，文件不存在则视为「没配置」，
 不会报错。
 
-`server start` 把 PID、日志写在 `~/.cache/farfarfun/funflix-web/run/` 下；`server stop` 发
+`server start` 把 PID、日志写在 `~/farfarfun/funflix/web/` 下；`server stop` 发
 `SIGTERM` 后轮询到超时（默认 10s，`FUNFLIX_WEB_STOP_TIMEOUT_MS` 可调），**不会自动升级成
 SIGKILL**——强杀是调用方的策略决定，命令本身不替你做这个决定。`server restart` 等价于
 `server stop` + `server start`。`server status` 除了 PID/端口，还会报告当前安装的
@@ -188,7 +188,7 @@ funflix-web server start --backend http://127.0.0.1:18810
 | 变量 | 说明 |
 | --- | --- |
 | `FUNFLIX_API_BASE_URL` | `--backend` 的默认值 |
-| `FUNFLIX_WEB_STATE_DIR` | PID/日志目录，默认 `~/.cache/farfarfun/funflix-web/run` |
+| `FUNFLIX_WEB_STATE_DIR` | PID/日志目录，默认 `~/farfarfun/funflix/web` |
 | `FUNFLIX_WEB_STARTUP_GRACE_MS` | `start` 起完后等多久再确认存活，默认 `1000` |
 | `FUNFLIX_WEB_STOP_TIMEOUT_MS` | `stop` 等待优雅退出的超时，默认 `10000` |
 
