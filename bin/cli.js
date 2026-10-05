@@ -4,7 +4,7 @@
 // 子命令分两组（参照 service-release-governance 的 entrypoint 约定）：
 //   server <start|stop|restart|status|run>   运行时生命周期
 //   upgrade / rollback / uninstall            CLI 自身的包管理（走 npm，不是 setup.sh 的事）
-import { readFileSync } from 'node:fs'
+import { readFileSync, realpathSync } from 'node:fs'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
@@ -191,6 +191,20 @@ async function main() {
 }
 
 // 只有直接执行本文件时才跑 CLI 逻辑；被测试等场景 import 时不应触发 process.exit。
-if (import.meta.url === `file://${process.argv[1]}`) {
+//
+// 两边都要先过 realpathSync 再比：包管理器（pnpm/npm -g）放出来的 bin 是一条
+// 软链，node 以 realpath 算 import.meta.url，而 argv[1] 还是软链路径，直接比
+// 字符串永远不相等 —— main() 不执行、CLI 静默退出 0，start 看着「成功」但端口
+// 从不监听。顺带也躲开了手搓 `file://` 不做百分号编码的坑。
+function isDirectRun() {
+  if (!process.argv[1]) return false
+  try {
+    return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])
+  } catch {
+    return false
+  }
+}
+
+if (isDirectRun()) {
   main()
 }
