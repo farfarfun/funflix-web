@@ -7,7 +7,24 @@ export interface Page<T> {
   size: number
 }
 
-export type MediaType = 'movie' | 'tv' | 'anime' | 'variety' | 'documentary' | 'unknown'
+/**
+ * `book` / `comic` / `other` 是**非影视**类型 —— 采集源里混着大量小说、漫画、
+ * 课程的分享，它们是真资源，但搜「大主宰」的人要的是那部动漫。所以后端默认
+ * 不把它们放进结果，必须显式传 `media_type` 才看得到（见后端
+ * `services/search.py` 的 `VIDEO_MEDIA_TYPES`）。
+ *
+ * `unknown` 不在此列：它是「还没判出类型」而不是「不是影视」，默认可见。
+ */
+export type MediaType =
+  | 'movie'
+  | 'tv'
+  | 'anime'
+  | 'variety'
+  | 'documentary'
+  | 'unknown'
+  | 'book'
+  | 'comic'
+  | 'other'
 
 export type Quality = '4k' | '1080p' | '720p' | 'sd' | 'unknown'
 
@@ -107,6 +124,54 @@ export interface MediaDetail extends MediaSummary {
   updated_at: string
   tags: Tag[]
   resources: Resource[]
+}
+
+/**
+ * 作品详情里的一季。
+ *
+ * `season` 为 0 表示「无季概念」（电影、单季剧、综艺），展示时该渲染成
+ * 「正片」而不是「第 0 季」—— 用 `seasonLabel()`。
+ */
+export interface SeasonSummary extends MediaSummary {
+  season: number
+}
+
+export interface SeasonDetail extends SeasonSummary {
+  /** **可能是截断的**（后端每季最多返回 50 条），真实总数看 `resource_count` */
+  resources: Resource[]
+}
+
+/**
+ * 搜索结果的一行 —— 一部剧，不是一季。
+ *
+ * 搜「大主宰」给的是一条「大主宰（4 季 / 1496 资源）」，而不是 448 条同名行。
+ * 季数与资源数是跨季汇总后的冗余计数，列表页直接用，不要自己去数 `seasons`。
+ */
+export interface WorkSummary {
+  id: string
+  title: string
+  original_title: string | null
+  media_type: MediaType
+  /** 后端已把「年份未知」的哨兵 0 抹成 null */
+  year: number | null
+  poster_url: string | null
+  season_count: number
+  resource_count: number
+  valid_resource_count: number
+}
+
+export interface WorkDetail extends WorkSummary {
+  norm_key: string
+  aliases: string[]
+  overview: string | null
+  tmdb_id: number | null
+  douban_id: string | null
+  imdb_id: string | null
+  created_at: string
+  updated_at: string
+  /** 各季标签去重后的并集 —— 题材/地区描述的是整部剧 */
+  tags: Tag[]
+  seasons: SeasonDetail[]
 }
 
 export interface Source {

@@ -1,9 +1,12 @@
 /** 枚举的中文标签与配色。后端返回的是英文字面值，展示层统一在这里翻译。 */
 
 import {
+  BookOutline,
+  CubeOutline,
   EarthOutline,
   FilmOutline,
   HelpCircleOutline,
+  ImagesOutline,
   MicOutline,
   SparklesOutline,
   TvOutline,
@@ -14,6 +17,11 @@ import type { CheckStatus, MediaType, ParseStatus, Provider, Quality, SourceType
 
 type NTagType = 'default' | 'success' | 'info' | 'warning' | 'error'
 
+/**
+ * 类型标签。键的顺序就是筛选栏里胶囊的顺序 —— 影视类型在前，
+ * 非影视（小说/漫画/其他）排在最后：它们默认不进搜索结果，
+ * 点一下才查得到（见 `api/types.ts` 的 `MediaType`）。
+ */
 export const MEDIA_TYPE_LABEL: Record<MediaType, string> = {
   movie: '电影',
   tv: '剧集',
@@ -21,7 +29,13 @@ export const MEDIA_TYPE_LABEL: Record<MediaType, string> = {
   variety: '综艺',
   documentary: '纪录片',
   unknown: '未知',
+  book: '小说',
+  comic: '漫画',
+  other: '其他',
 }
+
+/** 非影视类型：默认不出现在结果里，筛选栏里要跟影视类型区分开。 */
+export const NON_VIDEO_MEDIA_TYPES: readonly MediaType[] = ['book', 'comic', 'other']
 
 /** 按作品类型给卡片/详情页一条强调色，扫一眼就能分辨电影/剧集/动漫……浅深色主题共用同一套，都是中高饱和度色，两边对比度都够。 */
 export const MEDIA_TYPE_COLOR: Record<MediaType, string> = {
@@ -31,6 +45,9 @@ export const MEDIA_TYPE_COLOR: Record<MediaType, string> = {
   variety: '#d68f00',
   documentary: '#18a058',
   unknown: '#9095a3',
+  book: '#8d6e63',
+  comic: '#ff7043',
+  other: '#78909c',
 }
 
 /** 没有封面图时，卡片/详情页拿它顶上去——总比空白或一格纯色好认。 */
@@ -41,6 +58,9 @@ export const MEDIA_TYPE_ICON: Record<MediaType, Component> = {
   variety: MicOutline,
   documentary: EarthOutline,
   unknown: HelpCircleOutline,
+  book: BookOutline,
+  comic: ImagesOutline,
+  other: CubeOutline,
 }
 
 export const PROVIDER_LABEL: Record<Provider, string> = {
@@ -158,6 +178,16 @@ export const SOURCE_TYPE_LABEL: Record<SourceType, string> = {
   manual: '手工',
   api: 'API',
   unknown: '未知',
+}
+
+/**
+ * 季号的展示名。
+ *
+ * 0 是后端的「无季概念」哨兵（电影、单季剧、综艺，见 `models/media.py` 的
+ * `NO_SEASON`），渲染成「第 0 季」会让一部电影看起来缺了正片。
+ */
+export function seasonLabel(season: number): string {
+  return season === 0 ? '正片' : `第 ${season} 季`
 }
 
 /** 枚举选项转成 naive-ui 的 options，并在最前面加一个「全部」。 */

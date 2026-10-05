@@ -2,10 +2,10 @@
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
-import type { MediaSummary } from '@/api/types'
+import type { WorkSummary } from '@/api/types'
 import { MEDIA_TYPE_COLOR, MEDIA_TYPE_ICON, MEDIA_TYPE_LABEL } from '@/utils/display'
 
-defineProps<{ item: MediaSummary }>()
+defineProps<{ item: WorkSummary }>()
 
 // 封面图挂了（链接失效、跨域）就退回图标占位，别留一个破图标在格子里
 const broken = ref(false)
@@ -36,6 +36,8 @@ const broken = ref(false)
         <div class="scrim-meta">
           <span>{{ MEDIA_TYPE_LABEL[item.media_type] }}</span>
           <span v-if="item.year">· {{ item.year }}</span>
+          <!-- 只有多季才提季数：1 季是电影/单季剧的常态，显示「1 季」纯属噪声 -->
+          <span v-if="item.season_count > 1">· {{ item.season_count }} 季</span>
           <span class="scrim-count">· {{ item.resource_count }} 条</span>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatSize, formatTime, fromNow, shortId, toOptions } from './display'
+import { formatSize, formatTime, fromNow, seasonLabel, shortId, toOptions } from './display'
 
 describe('formatSize', () => {
   it('null 或非正数返回占位符', () => {
@@ -44,5 +44,16 @@ describe('toOptions', () => {
       { label: 'A', value: 'a' },
       { label: 'B', value: 'b' },
     ])
+  })
+})
+
+describe('seasonLabel', () => {
+  it('0 是「无季概念」的哨兵，渲染成正片而不是第 0 季', () => {
+    expect(seasonLabel(0)).toBe('正片')
+  })
+
+  it('其余季号照常显示', () => {
+    expect(seasonLabel(1)).toBe('第 1 季')
+    expect(seasonLabel(12)).toBe('第 12 季')
   })
 })

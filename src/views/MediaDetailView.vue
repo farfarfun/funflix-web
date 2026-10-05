@@ -4,20 +4,37 @@ import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 import { api, ApiError } from '@/api/client'
-import type { MediaDetail } from '@/api/types'
+import type { SeasonDetail, WorkDetail } from '@/api/types'
 import ResourceTable from '@/components/ResourceTable.vue'
 import { pageHeading } from '@/composables/usePageHeading'
-import { formatTime, MEDIA_TYPE_COLOR, MEDIA_TYPE_ICON, MEDIA_TYPE_LABEL } from '@/utils/display'
+import {
+  formatTime,
+  MEDIA_TYPE_COLOR,
+  MEDIA_TYPE_ICON,
+  MEDIA_TYPE_LABEL,
+  seasonLabel,
+} from '@/utils/display'
 
 const route = useRoute()
 
-const media = ref<MediaDetail | null>(null)
+/** 详情的主体是一部剧，季是子层 —— 资源按季分组展示，不拍平成一片。 */
+const media = ref<WorkDetail | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const missing = ref(false)
 const posterBroken = ref(false)
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * 这一季的资源有没有被后端截断。
+ *
+ * 接口每季最多返回 50 条（`v1/works.py` 的 `MAX_SEASON_RESOURCES`），而
+ * `resource_count` 是真实总数 —— 不提示的话使用者会以为这就是全部。
+ */
+function truncated(season: SeasonDetail): boolean {
+  return season.resources.length < season.resource_count
+}
 
 async function load() {
   const id = String(route.params.id)
@@ -31,7 +48,7 @@ async function load() {
   missing.value = false
   posterBroken.value = false
   try {
-    media.value = await api.getMedia(id)
+    media.value = await api.getWork(id)
     pageHeading.value = media.value.title
     document.title = `${media.value.title} · funflix`
   } catch (e) {
@@ -102,6 +119,7 @@ onUnmounted(() => {
                 <span v-for="t in media.tags" :key="t.id" class="tag">{{ t.name }}</span>
               </div>
               <div class="hero-summary">
+                <span v-if="media.season_count > 1">{{ media.season_count }} 季 · </span>
                 {{ media.resource_count }} 条资源
                 <span v-if="media.valid_resource_count > 0">· {{ media.valid_resource_count }} 条可用</span>
               </div>
@@ -118,6 +136,7 @@ onUnmounted(() => {
             <n-descriptions-item label="别名">
               {{ media.aliases.length ? media.aliases.join('、') : '-' }}
             </n-descriptions-item>
+            <n-descriptions-item label="季数">{{ media.season_count }}</n-descriptions-item>
             <n-descriptions-item label="资源数">
               {{ media.resource_count }} 条（{{ media.valid_resource_count }} 条可用）
             </n-descriptions-item>
@@ -134,16 +153,53 @@ onUnmounted(() => {
           {{ media.overview }}
         </n-card>
 
-        <n-card size="small" class="mt">
+        <!-- 单季（电影、单季剧、综艺）不套季的壳，直接给资源表 -->
+        <n-card v-if="media.seasons.length === 1" size="small" class="mt">
           <template #header>
             <n-space align="center" :size="8">
               <n-icon size="16" color="#18a058"><CloudDownloadOutline /></n-icon>
               <span>网盘资源</span>
-              <n-text depth="3" class="count">{{ media.resources.length }} 条</n-text>
+              <n-text depth="3" class="count">{{ media.seasons[0].resource_count }} 条</n-text>
             </n-space>
           </template>
-          <ResourceTable :resources="media.resources" />
+          <ResourceTable :resources="media.seasons[0].resources" />
+          <n-text v-if="truncated(media.seasons[0])" depth="3" class="truncated">
+            只列出前 {{ media.seasons[0].resources.length }} 条，共
+            {{ media.seasons[0].resource_count }} 条
+          </n-text>
         </n-card>
+
+        <n-card v-else-if="media.seasons.length > 1" size="small" class="mt">
+          <template #header>
+            <n-space align="center" :size="8">
+              <n-icon size="16" color="#18a058"><CloudDownloadOutline /></n-icon>
+              <span>分季资源</span>
+              <n-text depth="3" class="count">{{ media.season_count }} 季 / {{ media.resource_count }} 条</n-text>
+            </n-space>
+          </template>
+          <!-- accordion：一次只展开一季。多季各带几十条资源，全展开要渲染几百行
+               表格，而使用者一次只看一季 -->
+          <n-collapse accordion :default-expanded-names="[media.seasons[0].id]">
+            <n-collapse-item v-for="s in media.seasons" :key="s.id" :name="s.id">
+              <template #header>
+                <div class="season-head">
+                  <strong>{{ seasonLabel(s.season) }}</strong>
+                  <n-text depth="3" class="count">
+                    {{ s.resource_count }} 条<template v-if="s.valid_resource_count > 0">
+                      · {{ s.valid_resource_count }} 可用</template
+                    >
+                  </n-text>
+                </div>
+              </template>
+              <ResourceTable :resources="s.resources" />
+              <n-text v-if="truncated(s)" depth="3" class="truncated">
+                只列出前 {{ s.resources.length }} 条，共 {{ s.resource_count }} 条
+              </n-text>
+            </n-collapse-item>
+          </n-collapse>
+        </n-card>
+
+        <n-empty v-else description="这部作品下还没有资源" class="mt" />
       </template>
     </n-spin>
   </div>
@@ -242,6 +298,16 @@ onUnmounted(() => {
 .count {
   font-size: 12px;
   font-weight: 400;
+}
+.season-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.truncated {
+  display: block;
+  margin-top: 10px;
+  font-size: 12px;
 }
 
 @media (max-width: 640px) {

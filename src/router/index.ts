@@ -34,6 +34,8 @@ export const router = createRouter({
       meta: { title: '作品检索' },
     },
     {
+      // `:id` 是 **work.id**（一部剧），不是 media.id（一季）—— 路径沿用
+      // /media 只是为了不废掉已有链接，页面打的是 `GET /works/{id}`。
       path: '/media/:id',
       name: 'media-detail',
       component: () => import('@/views/MediaDetailView.vue'),

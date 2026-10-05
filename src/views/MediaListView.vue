@@ -9,7 +9,13 @@ import type { MediaType, Provider } from '@/api/types'
 import MediaListRow from '@/components/MediaListRow.vue'
 import PosterCard from '@/components/PosterCard.vue'
 import { usePagedList } from '@/composables/usePagedList'
-import { MEDIA_TYPE_COLOR, MEDIA_TYPE_LABEL, PROVIDER_LABEL, toOptions } from '@/utils/display'
+import {
+  MEDIA_TYPE_COLOR,
+  MEDIA_TYPE_LABEL,
+  NON_VIDEO_MEDIA_TYPES,
+  PROVIDER_LABEL,
+  toOptions,
+} from '@/utils/display'
 
 /** 首屏骨架屏的占位数：够铺满一屏又不会渲染太多占位节点。 */
 const SKELETON_COUNT = 12
@@ -37,10 +43,15 @@ const provider = ref<Provider | null>(null)
 
 const TYPE_OPTIONS = Object.keys(MEDIA_TYPE_LABEL) as MediaType[]
 
+/** 非影视类型（小说/漫画/其他）在筛选栏里淡一档，提示它们不在默认结果里。 */
+function isNonVideo(t: MediaType): boolean {
+  return NON_VIDEO_MEDIA_TYPES.includes(t)
+}
+
 // 解构出来才能在模板里自动解包 —— 对象里的 ref 不会被模板 unwrap
 const { items, total, page, size, loading, error, refresh, goto, reload, setSize } = usePagedList(
   (p, s) =>
-    api.listMedia({
+    api.listWorks({
       keyword: keyword.value.trim(),
       media_type: mediaType.value,
       year: year.value,
@@ -220,6 +231,8 @@ onMounted(() => {
       </div>
 
       <div class="filters" role="group" aria-label="作品筛选">
+        <!-- 不选类型时后端只返回影视，所以这颗胶囊叫「全部影视」而不是「全部」——
+             小说/漫画要点对应的胶囊才查得到（见 api/types.ts 的 MediaType） -->
         <div class="pills" role="group" aria-label="作品类型">
           <button
             type="button"
@@ -228,14 +241,14 @@ onMounted(() => {
             :aria-pressed="mediaType === null"
             @click="selectType(null)"
           >
-            全部
+            全部影视
           </button>
           <button
             v-for="t in TYPE_OPTIONS"
             :key="t"
             type="button"
             class="pill"
-            :class="{ active: mediaType === t }"
+            :class="{ active: mediaType === t, 'pill-alt': isNonVideo(t) }"
             :style="mediaType === t ? { background: MEDIA_TYPE_COLOR[t], borderColor: MEDIA_TYPE_COLOR[t] } : {}"
             :aria-pressed="mediaType === t"
             @click="selectType(t)"
@@ -377,9 +390,18 @@ onMounted(() => {
 .pill:hover {
   opacity: 1;
 }
+/* 非影视类型：默认结果里没有它们，淡一档 + 虚线边框，视觉上就是「另一类」 */
+.pill-alt {
+  opacity: 0.5;
+  border-style: dashed;
+}
+.pill-alt:hover {
+  opacity: 0.9;
+}
 .pill.active {
   opacity: 1;
   color: #fff;
+  border-style: solid;
   border-color: transparent;
   background: var(--n-primary-color, #6d5ef8);
 }

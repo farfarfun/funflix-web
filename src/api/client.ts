@@ -4,7 +4,6 @@ import type {
   AuthConfig,
   CollectReport,
   MediaDetail,
-  MediaSummary,
   Page,
   ParseReport,
   PipelineStats,
@@ -15,6 +14,8 @@ import type {
   Resource,
   Source,
   User,
+  WorkDetail,
+  WorkSummary,
 } from './types'
 
 const BASE = '/api/v1'
@@ -90,7 +91,7 @@ async function request<T>(path: string, init?: RequestInit & { params?: Params }
   return (await resp.json()) as T
 }
 
-export interface MediaQuery extends Params {
+export interface WorkQuery extends Params {
   keyword?: string
   media_type?: string | null
   year?: number | null
@@ -114,7 +115,10 @@ export const api = {
     }),
 
   // --- 作品 ---
-  listMedia: (params: MediaQuery) => request<Page<MediaSummary>>('/media', { params }),
+  // 列表与详情的主体都是 Work（一部剧，季是子层）。`/media/{id}` 留着是**季级**
+  // 详情：某一季的资源太多、作品详情页给的那一把不够看时才用得上。
+  listWorks: (params: WorkQuery) => request<Page<WorkSummary>>('/works', { params }),
+  getWork: (id: string) => request<WorkDetail>(`/works/${id}`),
   getMedia: (id: string) => request<MediaDetail>(`/media/${id}`),
 
   // --- 资源 ---

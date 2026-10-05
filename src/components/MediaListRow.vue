@@ -2,10 +2,10 @@
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
-import type { MediaSummary } from '@/api/types'
+import type { WorkSummary } from '@/api/types'
 import { MEDIA_TYPE_COLOR, MEDIA_TYPE_ICON, MEDIA_TYPE_LABEL } from '@/utils/display'
 
-defineProps<{ item: MediaSummary }>()
+defineProps<{ item: WorkSummary }>()
 
 // 缩略图挂了就退回图标占位，跟 PosterCard 的降级逻辑一致
 const broken = ref(false)
@@ -37,6 +37,8 @@ const broken = ref(false)
           {{ MEDIA_TYPE_LABEL[item.media_type] }}
         </n-tag>
         <span v-if="item.year">{{ item.year }}</span>
+        <!-- 只有多季才提季数：1 季是电影/单季剧的常态，显示「1 季」纯属噪声 -->
+        <span v-if="item.season_count > 1">{{ item.season_count }} 季</span>
         <span>{{ item.resource_count }} 条资源</span>
         <span v-if="item.valid_resource_count > 0" class="valid">{{ item.valid_resource_count }} 可用</span>
       </div>
