@@ -50,17 +50,21 @@ describe('createProxyHandler', () => {
     expect(JSON.parse(res.body)).toEqual({ path: '/api/v1/media' })
   })
 
-  it('后端不可达时返回 502，并在错误信息里带上后端地址方便定位', async () => {
+  it('后端不可达时返回 502，且不会回显连接凭据或查询参数', async () => {
     // 先监听再立刻关闭，拿到一个本机大概率没人用、连接必失败的端口。
     const probe = createServer()
     const deadPort = await listen(probe)
     await new Promise((resolve) => probe.close(resolve))
 
-    frontend = createServer(createProxyHandler(`http://127.0.0.1:${deadPort}`))
+    frontend = createServer(createProxyHandler(`http://user:secret@127.0.0.1:${deadPort}?token=private`))
     const frontendPort = await listen(frontend)
 
     const res = await rawRequest(frontendPort, '/healthz')
     expect(res.status).toBe(502)
     expect(res.body).toContain(String(deadPort))
+    expect(res.body).not.toContain('user')
+    expect(res.body).not.toContain('secret')
+    expect(res.body).not.toContain('token')
+    expect(res.body).not.toContain('private')
   })
 })

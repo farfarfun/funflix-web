@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url'
 import { runServe } from '../server/app.js'
 import { start, stop, restart, status } from '../server/lifecycle.js'
 import { defaultConfigPath, loadConfig } from '../server/config.js'
+import { redactUrl } from '../server/url.js'
 
 const PKG_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const PKG = JSON.parse(readFileSync(path.join(PKG_DIR, 'package.json'), 'utf8'))
@@ -106,7 +107,7 @@ async function runServerCommand(command, rest) {
     case 'start': {
       const result = await start(opts)
       console.log(`已启动（PID ${result.pid}）：http://${result.host}:${result.port}/web`)
-      console.log(`后端：${result.backendBaseUrl}`)
+      console.log(`后端：${redactUrl(result.backendBaseUrl)}`)
       console.log(`日志：${result.logFile}`)
       break
     }
@@ -123,11 +124,11 @@ async function runServerCommand(command, rest) {
     case 'status': {
       const result = status()
       if (result.state === 'running') {
-        console.log(`运行中（${PKG.name}@${PKG.version}）：PID ${result.pid}，http://${result.host}:${result.port}/web，后端 ${result.backendBaseUrl}`)
+        console.log(`运行中（${PKG.name}@${PKG.version}）：PID ${result.pid}，http://${result.host}:${result.port}/web，后端 ${redactUrl(result.backendBaseUrl)}`)
       } else if (result.state === 'stale') {
         console.log(`陈旧 PID 文件（PID ${result.pid} 已不存在）：${result.message}`)
       } else if (result.port) {
-        console.log(`已停止（${PKG.name}@${PKG.version}，上次监听端口 ${result.port}，后端 ${result.backendBaseUrl}）`)
+        console.log(`已停止（${PKG.name}@${PKG.version}，上次监听端口 ${result.port}，后端 ${redactUrl(result.backendBaseUrl)}）`)
       } else {
         console.log(`已停止（${PKG.name}@${PKG.version}）`)
       }

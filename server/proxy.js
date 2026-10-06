@@ -3,6 +3,7 @@
 // 由这一层把 /api、/healthz 转发到真实后端，浏览器眼里全程只有一个源。
 import http from 'node:http'
 import https from 'node:https'
+import { redactUrl } from './url.js'
 
 export function createProxyHandler(backendBaseUrl) {
   const backend = new URL(backendBaseUrl)
@@ -32,7 +33,7 @@ export function createProxyHandler(backendBaseUrl) {
         return
       }
       res.writeHead(502, { 'Content-Type': 'text/plain; charset=utf-8' })
-      res.end(`Bad Gateway: 无法连接后端 ${backendBaseUrl}（${err.message}）`)
+      res.end(`Bad Gateway: 无法连接后端 ${redactUrl(backendBaseUrl)}`)
     })
 
     req.pipe(proxyReq)
