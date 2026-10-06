@@ -6,6 +6,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { frontendReady, BUILD_HINT } from './static.js'
+import { redactUrl } from './url.js'
 
 const STARTUP_GRACE_MS = Number(process.env.FUNFLIX_WEB_STARTUP_GRACE_MS ?? 1000)
 const STOP_TIMEOUT_MS = Number(process.env.FUNFLIX_WEB_STOP_TIMEOUT_MS ?? 10000)
@@ -124,7 +125,7 @@ export async function start(opts = {}) {
     pid: child.pid,
     host,
     port,
-    backendBaseUrl,
+    backendBaseUrl: redactUrl(backendBaseUrl),
     startedAt: opts.now ?? new Date().toISOString(),
   })
 
@@ -135,7 +136,7 @@ export async function start(opts = {}) {
     throw new Error(`启动失败，进程未存活。最近日志：\n${tailLog(20)}`)
   }
 
-  return { pid: child.pid, host, port, backendBaseUrl, logFile: logFile() }
+  return { pid: child.pid, host, port, backendBaseUrl: redactUrl(backendBaseUrl), logFile: logFile() }
 }
 
 export async function stop() {

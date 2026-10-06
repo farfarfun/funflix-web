@@ -7,6 +7,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createStaticHandler } from './static.js'
 import { createProxyHandler } from './proxy.js'
+import { redactUrl } from './url.js'
 
 const WEB_PREFIX = '/web'
 
@@ -53,7 +54,7 @@ export function runServe(opts = {}) {
     server.on('error', reject)
     server.listen(port, host, () => {
       console.log(`funflix-web 已启动：http://${host}:${port}${WEB_PREFIX}`)
-      console.log(`后端：${backendBaseUrl}`)
+      console.log(`后端：${redactUrl(backendBaseUrl)}`)
       resolve(server)
     })
   })

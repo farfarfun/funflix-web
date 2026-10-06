@@ -62,6 +62,7 @@ do_install() {
   local -a index_args=()
 
   [[ -n "${version}" ]] || die "install 需要一个明确的 funflix 版本号，例如：scripts/setup.sh install 0.1.34"
+  require uv "请安装 uv 后重试"
   [[ -n "${FUNFLIX_INDEX_URL:-}" ]] && index_args+=(--index-url "${FUNFLIX_INDEX_URL}")
 
   # 每次重建，避免上一次残留的版本留在环境里
@@ -69,22 +70,10 @@ do_install() {
   mkdir -p "${RUN_DIR}"
   rm -rf "${PROD_VENV}"
 
-  # 优先用 uv：本项目本来就用它，而且部分系统上 python3 -m venv
-  # 因为缺 ensurepip 会建出一个没有 pip 的环境，报错还很隐晦。
-  if command -v uv >/dev/null 2>&1; then
-    uv venv "${PROD_VENV}" >/dev/null
-    info "安装 ${FUNFLIX_PACKAGE_NAME}==${version}"
-    uv pip install --python "${PROD_VENV}/bin/python" --no-cache \
-      "${index_args[@]}" "${FUNFLIX_PACKAGE_NAME}==${version}" >/dev/null
-  else
-    command -v python3 >/dev/null 2>&1 || die "既没有 uv 也没有 python3"
-    python3 -m venv "${PROD_VENV}"
-    [[ -x "${PROD_VENV}/bin/pip" ]] ||
-      die "建出的虚拟环境里没有 pip（系统可能缺 ensurepip / python3-venv），请安装 uv 后重试"
-    info "安装 ${FUNFLIX_PACKAGE_NAME}==${version}"
-    "${PROD_VENV}/bin/pip" install --no-cache-dir \
-      "${index_args[@]}" "${FUNFLIX_PACKAGE_NAME}==${version}" >/dev/null
-  fi
+  uv venv "${PROD_VENV}" >/dev/null
+  info "安装 ${FUNFLIX_PACKAGE_NAME}==${version}"
+  uv pip install --python "${PROD_VENV}/bin/python" --no-cache \
+    "${index_args[@]}" "${FUNFLIX_PACKAGE_NAME}==${version}" >/dev/null
 
   verify_install "${version}"
 }

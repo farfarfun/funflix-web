@@ -4,7 +4,7 @@
 #   scripts/setup.sh <action> [service] [env]
 #
 # 服务级动作按 action -> service -> env 解析；包级动作（publish / install）
-# 不带服务。参数给全就直接执行，只有缺失的部分才会交互补齐。
+# 不带服务。会改变服务状态的动作必须给全参数，避免交互误操作。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -74,14 +74,6 @@ needs_env() {
   esac
 }
 
-# 只在参数缺失时才用。gum 不在就报错让用户补全参数 ——
-# 生命周期脚本不该自己去装交互依赖。
-choose() {
-  command -v gum >/dev/null 2>&1 ||
-    die "缺少参数，且未安装 gum；请用完整参数调用，见 scripts/setup.sh --help"
-  gum choose "$@"
-}
-
 service_script_for() {
   case "$1" in
   worker) printf '%s\n' "${SERVICE_DIR}/worker.sh" ;;
@@ -138,8 +130,10 @@ main() {
   }
 
   local action="${1:-}"
-  [[ -n "${action}" ]] ||
-    action="$(choose "${SERVICE_ACTIONS[@]}" "${DEV_ACTIONS[@]}" "${RELEASE_ACTIONS[@]}")"
+  [[ -n "${action}" ]] || {
+    usage
+    die "缺少动作"
+  }
 
   # --- 仓库级动作：不带服务，原样转交对应脚本 ---
   if contains "${action}" "${RELEASE_ACTIONS[@]}"; then
@@ -175,14 +169,20 @@ main() {
     exec_service "${service}" status
   fi
 
-  [[ -n "${service}" ]] || service="$(choose "${SERVICES[@]}")"
+  [[ -n "${service}" ]] || {
+    usage
+    die "${action} 需要明确指定服务和环境"
+  }
   contains "${service}" "${SERVICES[@]}" || {
     usage
     die "未知服务：${service}"
   }
 
   if needs_env "${action}"; then
-    [[ -n "${env}" ]] || env="$(choose dev prod)"
+    [[ -n "${env}" ]] || {
+      usage
+      die "${action} 需要明确指定环境（dev 或 prod）"
+    }
     [[ "${env}" == "dev" || "${env}" == "prod" ]] || {
       usage
       die "未知环境：${env}"
