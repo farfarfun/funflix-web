@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   BookOutline,
-  ChevronDownOutline,
   CloudDownloadOutline,
   CloudUploadOutline,
   DocumentTextOutline,
@@ -14,7 +13,7 @@ import {
   SpeedometerOutline,
   SunnyOutline,
 } from '@vicons/ionicons5'
-import type { DropdownOption, MenuOption } from 'naive-ui'
+import type { MenuOption } from 'naive-ui'
 import { NIcon, useMessage } from 'naive-ui'
 import type { Component } from 'vue'
 import { computed, h, nextTick, ref, watch } from 'vue'
@@ -97,24 +96,11 @@ const drawerMenuOptions = computed<MenuOption[]>(() =>
   })),
 )
 
-// 桌面顶栏只留「作品检索」单独露出，其余运维页收进一个下拉。
-const opsEntries = GROUPS.find((g) => g.group === '运维')?.entries ?? []
-const opsOptions: DropdownOption[] = opsEntries.map((e) => ({
-  key: e.key,
-  label: e.label,
-  icon: renderIcon(e.icon),
-}))
-
-function onOpsSelect(key: string | number) {
-  void router.push({ name: String(key) })
-}
-
 // 详情页要让「作品检索」保持高亮，否则进详情后顶栏看起来什么都没选中
 const activeKey = computed(() => {
   const name = String(route.name ?? '')
   return name === 'media-detail' ? 'media' : name
 })
-const isOpsActive = computed(() => opsEntries.some((e) => e.key === activeKey.value))
 
 // 顶栏中间的面包屑：从分组里反查当前页所属分组，详情页例外，用页面自己上报的 pageHeading
 const breadcrumb = computed(() => {
@@ -151,21 +137,22 @@ watch(
             <span class="brand-name">funflix</span>
           </RouterLink>
 
+          <!-- 运维页直接平铺，不再收进「运维」下拉：访客看不到它们，看得到的就是
+               admin，没必要让唯一的受众多点一次。分组边界用一道竖线交代，免得读成
+               一排地位相同的六个入口。 -->
           <nav class="nav-links">
-            <RouterLink :to="{ name: 'media' }" class="nav-link" :class="{ active: activeKey === 'media' }">
-              作品检索
-            </RouterLink>
-            <n-dropdown v-if="isAdmin" trigger="click" :options="opsOptions" @select="onOpsSelect">
-              <button
-                type="button"
-                class="nav-link nav-link-dropdown"
-                :class="{ active: isOpsActive }"
-                aria-haspopup="menu"
+            <template v-for="(g, gi) in visibleGroups" :key="g.group">
+              <span v-if="gi > 0" class="nav-sep" aria-hidden="true" />
+              <RouterLink
+                v-for="e in g.entries"
+                :key="e.key"
+                :to="{ name: e.key }"
+                class="nav-link"
+                :class="{ active: activeKey === e.key }"
               >
-                运维
-                <n-icon size="12"><ChevronDownOutline /></n-icon>
-              </button>
-            </n-dropdown>
+                {{ e.label }}
+              </RouterLink>
+            </template>
           </nav>
         </div>
 
@@ -347,7 +334,14 @@ watch(
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 20px;
+  /* 平铺后 admin 这里有六个入口，20px 的间距会把中间的面包屑挤没 */
+  gap: 18px;
+}
+.nav-sep {
+  width: 1px;
+  height: 14px;
+  background: currentColor;
+  opacity: 0.16;
 }
 .nav-link {
   position: relative;
@@ -361,13 +355,6 @@ watch(
   text-decoration: none;
   color: inherit;
   transition: opacity 0.15s var(--ease);
-}
-.nav-link-dropdown {
-  appearance: none;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  font: inherit;
 }
 .nav-link:hover {
   opacity: 0.95;
