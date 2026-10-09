@@ -20,7 +20,7 @@ import type { Component } from 'vue'
 import { computed, h, nextTick, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
-import { authError, currentUser, isAuthenticated, logout } from '@/api/auth'
+import { authError, currentUser, isAdmin, isAuthenticated, logout } from '@/api/auth'
 import { pageHeading } from '@/composables/usePageHeading'
 
 defineProps<{ dark: boolean }>()
@@ -41,9 +41,9 @@ const mobileMenuOpen = ref(false)
 
 async function handleLogout() {
   await logout()
-  // 退出时如果正停在需要登录的「运维」页面上，留在原地也会被守卫弹去登录页，
-  // 不如直接跳过去，避免中间那一瞬间的空白/报错闪烁
-  if (route.meta.requiresAuth) void router.push({ name: 'login' })
+  // 整站都要登录，退出后留在原地那页也一样看不了（后端会回 401），直接跳登录页，
+  // 避免中间那一瞬间的空白/报错闪烁。
+  void router.push({ name: 'login' })
 }
 
 function renderIcon(icon: Component) {
@@ -55,8 +55,8 @@ function link(name: string, label: string) {
 }
 
 // 网盘资源放在「运维」而不是「发现」：它是按链接维度的全量清单，
-// 后端要求登录才能读（AdminDep 校验会话 cookie），用途是排查「某个网盘是不是
-// 大面积失效了」，而不是给使用者浏览内容 —— 那条路径是作品检索。
+// 后端要求管理员才能读（`AdminUserDep`），用途是排查「某个网盘是不是大面积失效了」，
+// 而不是给使用者浏览内容 —— 那条路径是作品检索。
 interface Entry {
   key: string
   label: string
@@ -79,17 +79,23 @@ const GROUPS: { group: string; entries: Entry[] }[] = [
   },
 ]
 
+// 访客看不到「运维」分组。只是省掉一次必然被弹回的点击 —— 真正的拦截在后端
+// （`AdminUserDep` 回 403）和路由守卫（`meta.requiresAdmin`）那两层。
+const visibleGroups = computed(() => GROUPS.filter((g) => g.group !== '运维' || isAdmin.value))
+
 // 移动端抽屉仍然用 n-menu 摊开两组——它是叠在内容上方的浮层，不像常驻侧栏那样定义「这是个后台系统」
-const drawerMenuOptions: MenuOption[] = GROUPS.map((g) => ({
-  type: 'group',
-  label: g.group,
-  key: `g-${g.group}`,
-  children: g.entries.map((e) => ({
-    label: link(e.key, e.label),
-    key: e.key,
-    icon: renderIcon(e.icon),
+const drawerMenuOptions = computed<MenuOption[]>(() =>
+  visibleGroups.value.map((g) => ({
+    type: 'group',
+    label: g.group,
+    key: `g-${g.group}`,
+    children: g.entries.map((e) => ({
+      label: link(e.key, e.label),
+      key: e.key,
+      icon: renderIcon(e.icon),
+    })),
   })),
-}))
+)
 
 // 桌面顶栏只留「作品检索」单独露出，其余运维页收进一个下拉。
 const opsEntries = GROUPS.find((g) => g.group === '运维')?.entries ?? []
@@ -149,7 +155,7 @@ watch(
             <RouterLink :to="{ name: 'media' }" class="nav-link" :class="{ active: activeKey === 'media' }">
               作品检索
             </RouterLink>
-            <n-dropdown trigger="click" :options="opsOptions" @select="onOpsSelect">
+            <n-dropdown v-if="isAdmin" trigger="click" :options="opsOptions" @select="onOpsSelect">
               <button
                 type="button"
                 class="nav-link nav-link-dropdown"

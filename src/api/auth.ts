@@ -1,9 +1,13 @@
 /**
  * 登录态。
  *
- * 「运维」区（采集源 / 原始文本 / 网盘资源 / 大盘）整体要求登录，会话由
- * 后端签名的 httpOnly cookie 维护，前端拿不到也不需要拿到 cookie 本身，
- * 这里只镜像一份当前用户，供路由守卫和界面判断用。
+ * 两道门：**整站**要登录（作品检索、详情也要），「运维」区（采集源 / 原始文本 /
+ * 网盘资源 / 大盘）在此之上还要求 admin 角色。会话由后端签名的 httpOnly cookie
+ * 维护，前端拿不到也不需要拿到 cookie 本身，这里只镜像一份当前用户，供路由守卫
+ * 和界面判断用。
+ *
+ * 镜像只用来少跳一次冤枉路。真正的门禁在 FastAPI 上（`CurrentUserDep` /
+ * `AdminUserDep`）—— 在控制台里把 `currentUser.role` 改成 admin，运维接口照样 403。
  */
 
 import { computed, ref } from 'vue'
@@ -20,6 +24,9 @@ export const currentUser = ref<User | null>(null)
 export const authReady = ref(false)
 
 export const isAuthenticated = computed(() => currentUser.value !== null)
+
+/** 是否运维账号。只决定「运维」入口显不显示、运维路由放不放行。 */
+export const isAdmin = computed(() => currentUser.value?.role === 'admin')
 
 /**
  * 最近一次 `fetchMe()` 遇到的非 401 故障（网络错误、后端 500 等）。
@@ -59,6 +66,20 @@ export function fetchMe(): Promise<void> {
 
 export async function login(username: string, password: string): Promise<void> {
   currentUser.value = await api.login(username, password)
+}
+
+/**
+ * 凭邀请码注册。注册成功即已登录（后端同一次响应就下了会话 cookie），
+ * 所以这里直接写 `currentUser`，不用再走一遍 `login()`。
+ *
+ * 注册出来一律是 guest —— 角色由后端定，调用方给不了。
+ */
+export async function register(
+  username: string,
+  password: string,
+  inviteCode: string,
+): Promise<void> {
+  currentUser.value = await api.register(username, password, inviteCode)
 }
 
 export async function logout(): Promise<void> {

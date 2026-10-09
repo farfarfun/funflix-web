@@ -246,6 +246,11 @@ export interface RawDocument extends RawDocumentSummary {
 export interface User {
   id: string
   username: string
+  /**
+   * `admin` 才看得到「运维」入口。这只是省掉一次无意义的点击 —— 真正的拦截在
+   * 后端（`AdminUserDep`），在控制台里把这个字段改成 admin 也进不去运维接口。
+   */
+  role: 'admin' | 'guest'
 }
 
 export interface AuthConfig {

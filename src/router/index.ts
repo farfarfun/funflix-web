@@ -1,15 +1,21 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import { authReady, fetchMe, isAuthenticated } from '@/api/auth'
+import { authReady, fetchMe, isAdmin, isAuthenticated } from '@/api/auth'
 
 /**
- * `meta.requiresAuth` 标记的路由是「运维」区，整体要求登录（见后端
- * `CurrentUserDep`）；没标的（作品检索/详情、登录页）保持公开。
+ * 两道门，对应后端的 `CurrentUserDep` / `AdminUserDep`：
+ *
+ * - **默认要登录**。整站都要口令，作品检索/详情也一样 —— 所以是白名单而不是
+ *   黑名单：只有 `meta.public` 的路由（登录页）放行，新加页面漏标 meta 时会落在
+ *   「要登录」这一侧，而不是悄悄变成公开页。
+ * - `meta.requiresAdmin` 的是「运维」区，在登录之上还要求 admin 角色。
  */
 declare module 'vue-router' {
   interface RouteMeta {
     title?: string
-    requiresAuth?: boolean
+    /** 免登录。只给登录页 —— 否则没登录的人连登录页都进不去。 */
+    public?: boolean
+    requiresAdmin?: boolean
   }
 }
 
@@ -25,7 +31,7 @@ export const router = createRouter({
       path: '/login',
       name: 'login',
       component: () => import('@/views/LoginView.vue'),
-      meta: { title: '登录' },
+      meta: { title: '登录', public: true },
     },
     {
       path: '/media',
@@ -45,31 +51,31 @@ export const router = createRouter({
       path: '/resources',
       name: 'resources',
       component: () => import('@/views/ResourcesView.vue'),
-      meta: { title: '网盘资源', requiresAuth: true },
+      meta: { title: '网盘资源', requiresAdmin: true },
     },
     {
       path: '/providers',
       name: 'providers',
       component: () => import('@/views/ProvidersView.vue'),
-      meta: { title: '网盘管理', requiresAuth: true },
+      meta: { title: '网盘管理', requiresAdmin: true },
     },
     {
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('@/views/DashboardView.vue'),
-      meta: { title: '流水线大盘', requiresAuth: true },
+      meta: { title: '流水线大盘', requiresAdmin: true },
     },
     {
       path: '/sources',
       name: 'sources',
       component: () => import('@/views/SourcesView.vue'),
-      meta: { title: '采集源', requiresAuth: true },
+      meta: { title: '采集源', requiresAdmin: true },
     },
     {
       path: '/raw',
       name: 'raw',
       component: () => import('@/views/RawDocsView.vue'),
-      meta: { title: '原始文本', requiresAuth: true },
+      meta: { title: '原始文本', requiresAdmin: true },
     },
     {
       path: '/:pathMatch(.*)*',
@@ -84,8 +90,13 @@ export const router = createRouter({
 router.beforeEach(async (to) => {
   if (!authReady.value) await fetchMe()
 
-  if (to.meta.requiresAuth && !isAuthenticated.value) {
+  if (!to.meta.public && !isAuthenticated.value) {
     return { name: 'login', query: { redirect: to.fullPath } }
+  }
+  // guest 手敲运维 URL：弹回首页而不是跳登录页 —— 他已经登录了，再让他登一次
+  // 也还是 guest，那是个死循环。
+  if (to.meta.requiresAdmin && !isAdmin.value) {
+    return { name: 'media' }
   }
   if (to.name === 'login' && isAuthenticated.value) {
     return { name: 'media' }

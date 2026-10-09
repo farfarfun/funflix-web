@@ -108,10 +108,12 @@ export const api = {
   login: (username: string, password: string) =>
     request<User>('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
   logout: () => request<void>('/auth/logout', { method: 'POST' }),
-  register: (username: string, password: string) =>
+  // 邀请码必填。后端对「不存在 / 已吊销 / 已过期 / 已用完」返回同一句 400 文案，
+  // 别在前端按文案分支 —— 那等于把「这个码存不存在」的探测器搬到客户端。
+  register: (username: string, password: string, inviteCode: string) =>
     request<User>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, invite_code: inviteCode }),
     }),
 
   // --- 作品 ---

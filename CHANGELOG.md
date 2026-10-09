@@ -8,6 +8,21 @@
 ## [Unreleased]
 
 ### 变更
+- **整站需要登录，「运维」区在此之上再要求管理员角色**。原先作品检索/详情是公开的，
+  现在未登录打开任何页面都跳 `/login`（`meta.public` 只给登录页 —— 白名单而不是
+  黑名单，新页面漏标 meta 时落在「要登录」那一侧）。`meta.requiresAuth` 随之改名
+  `meta.requiresAdmin`：它的含义从「要登录」变成了「要管理员」，留着旧名字就是假的。
+  guest 手敲运维 URL 会被弹回 `/media` 而不是跳登录页 —— 他已经登录了，再登一次
+  也还是 guest。`User` 多一个 `role` 字段，顶栏「运维」下拉和移动端抽屉的「运维」
+  分组按它过滤。**这层过滤只是省掉一次必然失败的点击**，真正的拦截在 FastAPI
+  （`CurrentUserDep` / `AdminUserDep`）—— `funflix-web/server/` 只是静态文件 +
+  反向代理，没有任何鉴权，光靠前端守卫挡不住直接 curl 接口
+- **登录页改成三个 tab：访客登录（默认） / 注册 / 管理登录**。三个 tab 打的是同一组
+  接口，差别只在文案和登录后的落地页（管理登录进大盘，其余进作品检索）—— 后端不按
+  tab 发角色，角色由账号本身决定，guest 在「管理登录」里输对密码也只是正常进站。
+  注册要邀请码，`registration_enabled` 为假时连 tab 都不渲染；拉不到配置时按**不
+  开放**处理，渲染一个必然 403 的表单比少一个 tab 更难解释。注册成功即已登录，
+  不用再登一次
 - **npm 包名加上 `@farfarfun` scope：`funflix-web` → `@farfarfun/funflix-web`**。
   CLI 的命令名不变，还是 `funflix-web`（`bin` 字段与包名无关）。两处连带改动：
   `bin/cli.js` 的 `npmGlobal` 给 npm 显式带上 `--@farfarfun:registry=<私有仓库>`
