@@ -4,19 +4,18 @@ import { useMessage } from 'naive-ui'
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { login, register } from '@/api/auth'
+import { isAdmin, login, register } from '@/api/auth'
 import { ApiError, api } from '@/api/client'
 
 const route = useRoute()
 const router = useRouter()
 const message = useMessage()
 
-/** 默认停在「访客登录」—— 进这页的绝大多数是来看作品的，不是来登运维的。 */
-const tab = ref<'guest' | 'register' | 'admin'>('guest')
+/** 默认停在「登录」—— 注册是少数情况。 */
+const tab = ref<'login' | 'register'>('login')
 
-// 访客 / 管理两个 tab 共用一份表单：打的是同一个 `POST /auth/login`，差别只在文案
-// 和登录后的落地页。后端不按 tab 发角色，角色由账号本身决定 —— guest 在「管理登录」
-// 里输对密码也只是正常进站。
+// 只有一个登录入口：访客和管理员打的本来就是同一个 `POST /auth/login`，角色由账号
+// 本身决定，不由入口决定。分成两个 tab 只会让人以为「选错 tab 会登不上」。
 const username = ref('')
 const password = ref('')
 
@@ -40,7 +39,7 @@ onMounted(async () => {
   }
 })
 
-/** 登录后去哪儿：守卫带过来的 `redirect` 优先，否则按 tab 给默认落地页。 */
+/** 登录后去哪儿：守卫带过来的 `redirect` 优先，否则给默认落地页。 */
 function land(fallback: 'media' | 'dashboard') {
   const redirect = route.query.redirect
   void router.push(typeof redirect === 'string' ? redirect : { name: fallback })
@@ -54,7 +53,8 @@ async function submitLogin() {
   submitting.value = true
   try {
     await login(username.value, password.value)
-    land(tab.value === 'admin' ? 'dashboard' : 'media')
+    // 落地页按**登录后拿到的角色**定，不按入口定：admin 进大盘，其余进作品检索。
+    land(isAdmin.value ? 'dashboard' : 'media')
   } catch (e) {
     message.error(e instanceof ApiError ? e.message : '登录失败')
   } finally {
@@ -84,7 +84,7 @@ async function submitRegister() {
   <div class="wrap">
     <n-card size="large" class="card">
       <n-tabs v-model:value="tab" type="line" animated>
-        <n-tab-pane name="guest" tab="访客登录">
+        <n-tab-pane name="login" tab="登录">
           <n-form @submit.prevent="submitLogin">
             <n-form-item label="用户名" :show-feedback="false">
               <n-input
@@ -107,7 +107,10 @@ async function submitRegister() {
               进入站点
             </n-button>
           </n-form>
-          <n-text depth="3" class="hint"> 本站需要口令访问，口令由站点维护者提供。 </n-text>
+          <n-text depth="3" class="hint">
+            本站需要口令访问，口令由站点维护者提供。「运维」区（大盘 / 采集源 / 原始文本 /
+            网盘资源）按账号角色开放，管理员登录后自动可见。
+          </n-text>
         </n-tab-pane>
 
         <n-tab-pane v-if="registrationEnabled" name="register" tab="注册">
@@ -141,34 +144,6 @@ async function submitRegister() {
             </n-button>
           </n-form>
           <n-text depth="3" class="hint"> 注册需要邀请码，向站点维护者索取。 </n-text>
-        </n-tab-pane>
-
-        <n-tab-pane name="admin" tab="管理登录">
-          <n-form @submit.prevent="submitLogin">
-            <n-form-item label="用户名" :show-feedback="false">
-              <n-input
-                v-model:value="username"
-                placeholder="用户名"
-                :input-props="{ autocomplete: 'username' }"
-              />
-            </n-form-item>
-            <n-form-item label="密码" :show-feedback="false" class="mt">
-              <n-input
-                v-model:value="password"
-                type="password"
-                show-password-on="click"
-                placeholder="密码"
-                :input-props="{ autocomplete: 'current-password' }"
-              />
-            </n-form-item>
-            <n-button type="primary" attr-type="submit" block class="mt-lg" :loading="submitting">
-              <template #icon><n-icon><LogInOutline /></n-icon></template>
-              登录
-            </n-button>
-          </n-form>
-          <n-text depth="3" class="hint">
-            「运维」区（大盘 / 采集源 / 原始文本 / 网盘资源）需要管理员账号，账号由管理员在服务端创建。
-          </n-text>
         </n-tab-pane>
       </n-tabs>
     </n-card>
