@@ -13,6 +13,12 @@ const WEB_PREFIX = '/web'
 
 const DEFAULT_STATIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'dist')
 
+/**
+ * 创建 funflix-web 的 HTTP 服务。
+ *
+ * @param {{ staticDir?: string, backendBaseUrl?: string }} opts 静态资源目录和后端基础地址。
+ * @returns {import('node:http').Server} 尚未开始监听的 HTTP 服务实例。
+ */
 export function createServer(opts = {}) {
   const staticDir = opts.staticDir ?? DEFAULT_STATIC_DIR
   const backendBaseUrl = opts.backendBaseUrl ?? 'http://127.0.0.1:18810'
@@ -44,6 +50,12 @@ export function createServer(opts = {}) {
   })
 }
 
+/**
+ * 创建并开始监听 funflix-web 服务。
+ *
+ * @param {{ host?: string, port?: number, staticDir?: string, backendBaseUrl?: string }} opts 监听与服务配置。
+ * @returns {Promise<import('node:http').Server>} 监听成功后兑现服务实例；监听失败时拒绝。
+ */
 export function runServe(opts = {}) {
   const host = opts.host ?? '127.0.0.1'
   const port = opts.port ?? 8810

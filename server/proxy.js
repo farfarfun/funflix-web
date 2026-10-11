@@ -5,6 +5,12 @@ import http from 'node:http'
 import https from 'node:https'
 import { redactUrl } from './url.js'
 
+/**
+ * 创建将请求转发至 funflix-api 的处理函数。
+ *
+ * @param {string} backendBaseUrl 后端服务的 HTTP(S) 基础地址。
+ * @returns {(req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse) => void} 请求处理函数；后端连接失败时返回 502。
+ */
 export function createProxyHandler(backendBaseUrl) {
   const backend = new URL(backendBaseUrl)
   const transport = backend.protocol === 'https:' ? https : http
