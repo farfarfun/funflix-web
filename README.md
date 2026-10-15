@@ -48,6 +48,9 @@ funflix-web server start --backend http://127.0.0.1:18810      # 起前端
 
 打开 `http://127.0.0.1:8810/web`。
 
+> 前端只有 npm 这一条安装渠道。公开 PyPI 上那个同名的 `funflix-web` 不是本项目的
+> 产物，**不要用 `pip install funflix-web`**，详见下面「生产发布」。
+
 包名带 `@farfarfun` scope，而它发布在私有仓库上，所以装之前要先把这个 scope
 指过去（只需一次，不影响其他包从公共 registry 装）：
 
@@ -161,7 +164,7 @@ SIGKILL**——强杀是调用方的策略决定，命令本身不替你做这�
 ```bash
 scripts/setup.sh publish              # 构建前端 → 发布 npm 包到私有仓库
 npm i -g @farfarfun/funflix-web       # 生产机上装（或指定版本 @farfarfun/funflix-web@x.y.z）
-scripts/setup.sh install 0.1.34       # worker/sync 用：把 funflix 精确版本装到 .run/prod-venv
+scripts/setup.sh install 1.0.35       # worker/sync 用：把 funflix 精确版本装到 .run/prod-venv
 scripts/setup.sh start worker prod
 scripts/setup.sh start sync prod
 funflix-api start --host 127.0.0.1 --port 18810 &
@@ -169,8 +172,12 @@ funflix-web server start --backend http://127.0.0.1:18810
 ```
 
 `@farfarfun/funflix-web` 发布到私有 npm 仓库（`package.json` 的 `publishConfig.registry`），
-不再发布到公开 PyPI——之前发布过的 0.1.4~0.1.6 是历史遗留的 Python 包，仍留在公开 PyPI
-上不动，只是不会再有新版本。
+不走公开 PyPI。
+
+公开 PyPI 上有一个同名的 `funflix-web` 发行包（`0.1.1`、`0.1.2`、`0.1.4`、`0.1.6`
+四版，最后一次上传 2026-08-31，均未 yank），它是另一套实现：单进程同时提供接口与
+界面、直接依赖 `funflix`，既不是本仓库的 npm 包，也不是 `funflix-api`。装本项目
+**不要** `pip install funflix-web`，按上面那两条命令来。
 
 ## 登录与会话
 
