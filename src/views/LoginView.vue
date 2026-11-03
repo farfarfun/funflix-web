@@ -30,14 +30,25 @@ const submitting = ref(false)
  * 处理：渲染出一个必然 403 的表单比少一个 tab 更难解释。
  */
 const registrationEnabled = ref(false)
+const oidcEnabled = ref(false)
 
 onMounted(async () => {
   try {
+    oidcEnabled.value = (await api.oidcConfig()).enabled
+    if (oidcEnabled.value) return
     registrationEnabled.value = (await api.authConfig()).registration_enabled
   } catch {
     registrationEnabled.value = false
   }
 })
+
+function loginWithOidc() {
+  const redirect = route.query.redirect
+  const next = typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')
+    ? `/web${redirect}`
+    : '/web/'
+  window.location.assign(`/api/v1/auth/oidc/login?next=${encodeURIComponent(next)}`)
+}
 
 /** 登录后去哪儿：守卫带过来的 `redirect` 优先，否则给默认落地页。 */
 function land(fallback: 'media' | 'dashboard') {
@@ -83,7 +94,11 @@ async function submitRegister() {
 <template>
   <div class="wrap">
     <n-card size="large" class="card">
-      <n-tabs v-model:value="tab" type="line" animated>
+      <n-button v-if="oidcEnabled" type="primary" block @click="loginWithOidc">
+        <template #icon><n-icon><LogInOutline /></n-icon></template>
+        使用统一账号登录
+      </n-button>
+      <n-tabs v-else v-model:value="tab" type="line" animated>
         <n-tab-pane name="login" tab="登录">
           <n-form @submit.prevent="submitLogin">
             <n-form-item label="用户名" :show-feedback="false">

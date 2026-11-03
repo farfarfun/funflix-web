@@ -185,10 +185,12 @@ funflix-web server start --backend http://127.0.0.1:18810
 采集源 / 原始文本 / 网盘资源）需要登录——账号由管理员在服务端创建（后端
 `/auth/register` 接口），前端目前没有自助注册入口。
 
-登录走用户名 + 密码（`/auth/login`），会话由后端签发的 **httpOnly cookie**
+配置 Casdoor 后，登录页会跳转到统一账号登录；回调由 `funflix-api` 处理，前端不保存
+OIDC 令牌。未配置 Casdoor 时仍使用用户名和密码。会话由后端签发的 **httpOnly cookie**
 维护，前端拿不到、也不需要拿到 cookie 本身，只在内存里镜像一份当前登录用户
 用于路由守卫和界面判断（见 `src/api/auth.ts`）。未登录访问「运维」区会被
 重定向到登录页；会话过期后端返回 401，前端据此清掉本地镜像的登录态。
+Casdoor 的 Client Secret、回调地址和首次管理员授权见 `funflix-api` 的 README。
 
 ## 配置
 

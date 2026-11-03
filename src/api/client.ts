@@ -104,6 +104,7 @@ export interface WorkQuery extends Params {
 export const api = {
   // --- 账号 ---
   authConfig: () => request<AuthConfig>('/auth/config'),
+  oidcConfig: () => request<{ enabled: boolean }>('/auth/oidc/config'),
   me: () => request<User | null>('/auth/me'),
   login: (username: string, password: string) =>
     request<User>('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
